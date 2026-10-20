@@ -23,6 +23,10 @@ cargo run
 
 Mở <http://localhost:10000>. Để thử 1v1, mở hai cửa sổ trình duyệt hoặc một cửa sổ ẩn danh. Cổng mặc định là `10000`; máy chủ cũng đọc biến môi trường `PORT`.
 
+## Sửa lỗi Cargo edition 2024 trên Render
+
+Ảnh build báo Cargo 1.84.1 chưa hỗ trợ ổn định `edition = "2024"`. Dockerfile dùng image builder `rust:1.85-slim` trở lên; Rust/Cargo 1.85 là bản ổn định đầu tiên hỗ trợ Rust 2024 Edition. Nếu repository GitHub đã có Dockerfile cũ, hãy cập nhật dòng `FROM rust:1.84-slim AS builder` thành `FROM rust:1.85-slim AS builder`, commit/push thay đổi rồi deploy lại.
+
 ## Triển khai trên Render
 
 1. Đưa thư mục này lên một repository GitHub của bạn.
