@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: emperors-great-battle
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: RUST_LOG
+        value: info

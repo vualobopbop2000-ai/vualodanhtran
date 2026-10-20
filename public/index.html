@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#122a1e">
+  <title>Emperor's Great Battle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <div class="brand-mark"><span class="brand-crown">♛</span></div>
+    <div class="brand-copy"><div class="brand-title">EMPEROR'S <span>GREAT BATTLE</span></div><div class="brand-subtitle">TACTICAL REAL-TIME WARFARE</div></div>
+    <div class="topbar-right"><span class="guest-pill"><i></i> GUEST MODE</span><span class="version-label">BETA · 1v1</span></div>
+  </header>
+
+  <main id="name-screen" class="screen name-screen">
+    <section class="hero-panel glass">
+      <div class="hero-art" aria-hidden="true">
+        <div class="hero-sun"></div><div class="hero-hill hill-back"></div><div class="hero-hill hill-front"></div>
+        <div class="hero-river"></div><div class="hero-castle castle-blue"><span>♜</span></div><div class="hero-castle castle-red"><span>♜</span></div>
+        <div class="hero-banner banner-blue">BLUE</div><div class="hero-banner banner-red">RED</div>
+      </div>
+      <div class="hero-content">
+        <div class="eyebrow"><span class="eyebrow-line"></span> ONE BATTLE. ONE EMPEROR.</div>
+        <h1>Claim the<br><em>Throne.</em></h1>
+        <p class="hero-desc">Chỉ huy đội quân của bạn, chiếm cứ điểm, xây mỏ vàng và phá hủy lâu đài đối thủ trong trận chiến chiến thuật 1v1 thời gian thực.</p>
+        <form id="name-form" class="name-form">
+          <label for="guest-name">TÊN CHIẾN BINH</label>
+          <div class="input-action"><input id="guest-name" type="text" maxlength="18" minlength="2" placeholder="Nhập tên của bạn…" required autocomplete="nickname"><button class="button button-gold" type="submit">Lưu tên <span>↗</span></button></div>
+          <div class="form-note"><span>◈</span> Chơi với tư cách khách · Không cần đăng ký · Không lưu tài khoản</div>
+        </form>
+      </div>
+      <div class="hero-foot"><span>01 / 03</span><span class="hero-foot-lines"><i></i><i></i><i></i></span><span>REAL-TIME STRATEGY</span></div>
+    </section>
+  </main>
+
+  <main id="lobby-screen" class="screen lobby-screen hidden">
+    <div class="section-heading"><div><div class="eyebrow">THE WAR ROOM</div><h2>Phòng chiến đấu <span class="live-dot"></span></h2><p>Chọn một phòng đang mở hoặc tự tạo chiến trường của riêng bạn.</p></div><div class="profile-chip"><div class="profile-avatar">♟</div><div><small>ĐANG ĐĂNG NHẬP VỚI TƯ CÁCH</small><strong id="lobby-player-name">Guest</strong></div><button id="change-name" class="icon-button" title="Đổi tên">✎</button></div></div>
+    <div class="lobby-layout">
+      <section class="panel create-panel">
+        <div class="panel-heading"><div class="panel-icon gold-icon">＋</div><div><h3>Tạo phòng mới</h3><p>Mời một đối thủ tham chiến</p></div></div>
+        <form id="create-room-form">
+          <label for="room-name">TÊN PHÒNG</label><div class="input-action create-field-action"><input id="room-name" maxlength="28" minlength="3" placeholder="VD: Đồng cỏ hoàng gia" required><button id="save-room-name" class="button button-subtle" type="button">Lưu tên</button></div><div id="room-name-feedback" class="field-feedback" aria-live="polite"></div>
+          <label for="room-password">MẬT KHẨU PHÒNG <span class="optional">TÙY CHỌN</span></label><div class="input-action create-field-action"><input id="room-password" maxlength="40" type="password" placeholder="Để trống nếu phòng công khai"><button id="save-room-password" class="button button-subtle" type="button">Lưu pass</button></div><div id="room-password-feedback" class="field-feedback" aria-live="polite"></div>
+          <div class="create-tip"><span>♜</span><div><strong>Trận chiến công bằng</strong><small>Mỗi phòng chỉ có 2 người chơi. Màu phe được chọn ngẫu nhiên.</small></div></div>
+          <button class="button button-gold button-wide" type="submit">Tạo phòng <span>↗</span></button>
+          <div id="create-error" class="form-error" aria-live="polite"></div>
+        </form>
+      </section>
+      <section class="panel room-panel">
+        <div class="panel-heading room-heading"><div class="panel-icon green-icon">▦</div><div><h3>Phòng đang mở</h3><p>Vào trận và đối đầu trực tiếp</p></div><button id="refresh-rooms" class="refresh-button" title="Làm mới danh sách">↻</button></div>
+        <div class="room-toolbar"><div class="search-box"><span>⌕</span><input id="room-search" type="search" placeholder="Tìm theo tên phòng…" autocomplete="off"></div><div class="room-count"><span id="room-count">0</span> PHÒNG</div></div>
+        <div class="room-table-wrap"><table class="room-table"><thead><tr><th>TÊN PHÒNG</th><th>CHỦ PHÒNG</th><th>NGƯỜI CHƠI</th><th></th></tr></thead><tbody id="room-list"><tr><td colspan="4" class="empty-state"><span class="loader"></span><br>Đang tìm chiến trường…</td></tr></tbody></table></div>
+        <div id="lobby-empty" class="lobby-empty hidden"><div class="empty-emblem">♜</div><strong>Chưa có phòng nào</strong><p>Hãy tạo phòng đầu tiên và chờ đối thủ của bạn.</p></div>
+        <div class="table-foot"><span><i class="online-dot"></i> Danh sách tự làm mới</span><span>Guest-only multiplayer</span></div>
+      </section>
+    </div>
+    <div class="lobby-footer"><span>EMPEROR'S GREAT BATTLE</span><span>CHOOSE YOUR SIDE. COMMAND YOUR LEGACY.</span></div>
+  </main>
+
+  <main id="game-screen" class="screen game-screen hidden">
+    <div class="battle-header">
+      <div class="battle-room"><button id="leave-room" class="back-button" title="Rời trận">←</button><div><small>CHIẾN TRƯỜNG</small><strong id="battle-room-name">Royal Meadow</strong></div></div>
+      <div class="battle-player blue-player"><span class="faction-emblem">♜</span><div><small id="own-label">PHE CỦA BẠN</small><strong id="own-player-name">Bạn</strong></div><span class="gold-chip">◈ <b id="own-gold">20</b></span></div>
+      <div class="vs-badge">VS</div>
+      <div class="battle-player red-player"><span class="faction-emblem">♜</span><div><small>ĐỐI THỦ</small><strong id="enemy-player-name">Đang chờ…</strong></div><span class="gold-chip">◈ <b id="enemy-gold">20</b></span></div>
+      <div class="match-clock"><small>THỜI GIAN</small><strong id="match-time">00:00</strong></div>
+    </div>
+    <div class="battle-layout">
+      <section class="battlefield-shell">
+        <div id="viewport" class="viewport"><div id="scene-loading" class="scene-loading"><span class="loader"></span><span>Đang dựng chiến trường 3D…</span></div>
+          <div class="map-top-label"><span class="mini-shield">♜</span><span id="map-own-label">PHE CỦA BẠN</span></div>
+          <div class="map-center-label"><span>SHALLOW RIVER</span><i></i><span>CONTESTED ZONE</span></div>
+          <div class="map-bottom-label"><span>EMPEROR'S GREAT BATTLE</span><span>ORTHOGRAPHIC FIELD</span></div>
+          <div id="waiting-overlay" class="waiting-overlay hidden"><div class="waiting-card"><div class="waiting-crown">♛</div><div class="eyebrow">READY YOUR ARMY</div><h3>Đang chờ đối thủ</h3><p>Giữ chiến trường này mở. Trận đấu bắt đầu khi người chơi thứ hai kết nối.</p><div class="waiting-pulse"><i></i><i></i><i></i></div><button id="copy-room" class="button button-outline">Sao chép tên phòng</button></div></div>
+          <div id="winner-overlay" class="winner-overlay hidden"><div class="winner-card"><div class="winner-crown">♛</div><small>THE BATTLE HAS ENDED</small><h2 id="winner-title">VICTORY</h2><p id="winner-copy">Lâu đài đối thủ đã thất thủ.</p><button id="return-lobby" class="button button-gold">Về sảnh chiến đấu ↗</button></div></div>
+          <div id="toast" class="toast hidden"></div>
+        </div>
+        <div class="map-legend"><span><i class="legend-dot blue-dot"></i> Phe xanh</span><span><i class="legend-dot red-dot"></i> Phe đỏ</span><span><i class="legend-dot gold-dot"></i> Mỏ vàng</span><span><i class="legend-diamond"></i> Điểm chiếm đóng</span><span class="map-zoom-note">CAMERA BỊ GIỚI HẠN TRONG BẢN ĐỒ</span></div>
+      </section>
+      <aside class="command-side">
+        <section class="panel command-panel"><div class="command-title"><div><div class="eyebrow">COMMAND CENTER</div><h3>Lệnh điều quân</h3></div><div class="command-indicator"><span></span> REAL-TIME</div></div>
+          <div class="command-buttons"><button class="command-button active" data-command="attack"><span class="command-icon">⚔</span><span><strong>Tấn công</strong><small>Tiến về căn cứ địch</small></span><kbd>1</kbd></button><button class="command-button" data-command="retreat"><span class="command-icon">↶</span><span><strong>Rút quân</strong><small>Lùi về tuyến nhà</small></span><kbd>2</kbd></button><button class="command-button" data-command="defend"><span class="command-icon">⬡</span><span><strong>Phòng thủ</strong><small>Giữ vị trí gần nhà</small></span><kbd>3</kbd></button><button class="command-button" data-command="occupy"><span class="command-icon">⚑</span><span><strong>Chiếm cứ điểm</strong><small>Giành quyền kiểm soát sông</small></span><kbd>4</kbd></button></div>
+        </section>
+        <section class="panel buff-panel"><div class="buff-heading"><div class="buff-symbol">✦</div><div><div class="eyebrow">BATTLE LOTION</div><h3>Roll buff ngẫu nhiên</h3></div></div><p class="buff-description">Mỗi hiệu ứng có tỷ lệ xuất hiện ngang nhau. Tăng sức mạnh cho toàn quân trong thời gian ngắn.</p><div id="buff-current" class="buff-current"><span>✧</span><div><strong>Chưa có buff</strong><small>Thời lượng hiệu ứng khoảng 9 giây</small></div></div><button id="roll-buff" class="button button-violet button-wide"><span>✦</span> ROLL BUFF <span id="buff-cooldown">SẴN SÀNG</span></button><div class="buff-types"><span title="Tất cả chỉ số +2">Điên cuồng</span><span title="Tốc độ +3">Nhanh nhẹn</span><span title="Tốc đánh +3">Tốc đánh</span><span title="Hồi 25% HP">Hồi máu</span><span title="Độc theo thời gian">Độc dược</span></div></section>
+      </aside>
+    </div>
+    <section class="panel army-panel"><div class="army-top"><div><div class="eyebrow">DEPLOYMENT</div><h3>Triển khai quân đội <span id="selected-level-title">· Cấp 1</span></h3></div><div class="level-select"><span>CẤP QUÂN</span><div id="level-buttons"><button class="level-button active" data-level="1">I</button><button class="level-button" data-level="2">II</button><button class="level-button" data-level="3">III</button><button class="level-button" data-level="4">IV</button><button class="level-button" data-level="5">V</button></div></div></div>
+      <div id="army-cards" class="army-cards">
+        <button class="army-card selected" data-unit="vanguard"><span class="unit-symbol soldier-symbol">♟</span><span class="unit-name">Lính tiên phong</span><span class="unit-cost">◈ 5</span><span class="unit-stats">HP 54 · ATK 4 · DEF 4</span></button>
+        <button class="army-card" data-unit="archer"><span class="unit-symbol archer-symbol">➶</span><span class="unit-name">Cung thủ</span><span class="unit-cost">◈ 7</span><span class="unit-stats">HP 34 · ATK 8 · Tầm xa</span></button>
+        <button class="army-card" data-unit="shield"><span class="unit-symbol shield-symbol">⬟</span><span class="unit-name">Lính khiên</span><span class="unit-cost">◈ 7</span><span class="unit-stats">HP 112 · DEF 12</span></button>
+        <button class="army-card" data-unit="mage"><span class="unit-symbol mage-symbol">✦</span><span class="unit-name">Pháp sư</span><span class="unit-cost">◈ 11</span><span class="unit-stats">HP 42 · AOE · Thiêu đốt</span></button>
+        <button class="army-card" data-unit="cavalry"><span class="unit-symbol cavalry-symbol">♞</span><span class="unit-name">Kỵ binh</span><span class="unit-cost">◈ 10</span><span class="unit-stats">HP 70 · Lao xuyên đội hình</span></button>
+        <button class="army-card" data-unit="elephant"><span class="unit-symbol elephant-symbol">♟</span><span class="unit-name">Kỵ tượng giáo</span><span class="unit-cost">◈ 12</span><span class="unit-stats">HP 98 · Tầm giáo dài</span></button>
+        <button class="army-card" data-unit="catapult"><span class="unit-symbol catapult-symbol">⚒</span><span class="unit-name">Máy bắn đá</span><span class="unit-cost">◈ 14</span><span class="unit-stats">HP 60 · ATK 15 · AOE</span></button>
+        <button class="army-card" data-unit="general"><span class="unit-symbol general-symbol">♛</span><span class="unit-name">Đại tướng quân</span><span class="unit-cost">◈ 15</span><span class="unit-stats">HP 205 · Triệu hồi quân</span></button>
+        <button class="army-card mine-card" data-unit="mine"><span class="unit-symbol mine-symbol">◆</span><span class="unit-name">Mỏ vàng</span><span class="unit-cost">◈ 0</span><span class="unit-stats">+1 vàng/giây mỗi cấp</span></button>
+      </div>
+      <div class="army-bottom"><div class="placement-hint"><span class="hint-cross">⌖</span><span><strong>Chọn quân, sau đó nhấp vào phần sân của bạn</strong><small>Quân chỉ có thể được triển khai ở nửa sân mình. Nhân vật được giữ ở kích thước nhỏ theo tỷ lệ bản đồ.</small></span></div><div class="army-actions"><div class="mine-count"><span>♢</span><span>Mỏ vàng <strong id="mine-count">0/5</strong></span></div><button id="upgrade-mine" class="button button-subtle">Nâng mỏ <span id="mine-upgrade-cost">◈ 8</span></button></div></div>
+    </section>
+    <div class="game-footer"><span>EMPEROR'S GREAT BATTLE <i>·</i> GUEST 1v1</span><span>PHÍM 1–4 ĐỂ ĐỔI LỆNH ĐIỀU QUÂN</span></div>
+  </main>
+
+  <div id="join-modal" class="modal-backdrop hidden"><div class="modal-card"><button id="close-join-modal" class="modal-close">×</button><div class="modal-symbol">♜</div><div class="eyebrow">JOIN THE BATTLE</div><h3 id="join-modal-title">Vào phòng</h3><p>Nhập mật khẩu của phòng nếu được yêu cầu.</p><form id="join-room-form"><label for="join-password">MẬT KHẨU PHÒNG</label><input id="join-password" type="password" placeholder="Mật khẩu (nếu có)"><div id="join-error" class="form-error"></div><button class="button button-gold button-wide" type="submit">Vào chiến trường ↗</button></form></div></div>
+  <div id="global-toast" class="global-toast hidden"></div>
+  <script type="module" src="/game.js"></script>
+</body>
+</html>
