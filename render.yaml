@@ -1,11 +1,8 @@
 services:
   - type: web
     name: emperors-great-battle
-    runtime: docker
+    runtime: rust
     plan: free
-    healthCheckPath: /healthz
-    envVars:
-      - key: PORT
-        value: 10000
-      - key: RUST_LOG
-        value: info
+    buildCommand: cargo build --release
+    startCommand: ./target/release/emperors-great-battle
+    healthCheckPath: /

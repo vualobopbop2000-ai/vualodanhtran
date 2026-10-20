@@ -1,737 +1,678 @@
 use axum::{
-    extract::{ws::{Message, WebSocket, WebSocketUpgrade}, Path, Query, State},
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::{get, post},
-    Json, Router,
+    extract::{ws::{Message, WebSocket, WebSocketUpgrade}, State},
+    response::IntoResponse,
+    routing::get,
+    Router,
 };
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
-use tokio::{sync::{mpsc, Mutex, RwLock}, time};
-use tower_http::{cors::CorsLayer, services::ServeDir};
-use tracing::{error, info};
-use uuid::Uuid;
+use serde_json::{json, Value};
+use std::{collections::HashMap, env, sync::{Arc, Mutex}, time::Duration};
+use tokio::{net::TcpListener, sync::mpsc};
+use tower_http::services::ServeDir;
 
-const WORLD_MAX: f32 = 1000.0;
-const RIVER_MIN: f32 = 475.0;
-const RIVER_MAX: f32 = 525.0;
-const MAX_LEVEL: u8 = 5;
+const CASTLE_HP: f32 = 5000.0;
+const MAP_X: f32 = 60.0;
+const MAP_Z: f32 = 40.0;
 
-type RoomMap = Arc<RwLock<HashMap<String, Arc<Mutex<Room>>>>>;
+type ClientId = u64;
+type Shared = Arc<Mutex<ServerState>>;
 
 #[derive(Clone)]
-struct AppState { rooms: RoomMap }
+struct AppState { shared: Shared }
 
-#[derive(Clone)]
+struct ServerState {
+    clients: HashMap<ClientId, Client>,
+    rooms: HashMap<String, Room>,
+    next_client_id: ClientId,
+    next_room_id: u64,
+}
+struct Client {
+    tx: mpsc::UnboundedSender<String>,
+    name: String,
+    room_id: Option<String>,
+    seat: Option<usize>,
+}
 struct Room {
     id: String,
     name: String,
-    password: Option<String>,
-    players: Vec<Player>,
-    game: GameState,
+    password: String,
+    players: [Option<ClientId>; 2],
+    names: [Option<String>; 2],
+    colors: [String; 2],
+    game: Option<GameState>,
 }
 
-#[derive(Clone)]
-struct Player {
-    id: String,
+#[derive(Clone, Serialize, Deserialize)]
+struct PlayerState {
     name: String,
-    token: String,
     color: String,
-    side: usize,
     gold: f32,
-    command: String,
-    connected: bool,
-    tx: Option<mpsc::UnboundedSender<String>>,
+    castle_hp: f32,
+    buff: String,
     buff_until: f32,
-    buff_kind: Option<String>,
-    buff_name: Option<String>,
-    buff_cooldown_until: f32,
+    potion_ready_at: f32,
 }
-
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Unit {
     id: u64,
     owner: usize,
     kind: String,
     x: f32,
-    y: f32,
-    hp: f32,
-    max_hp: f32,
-    attack: f32,
-    defense: f32,
-    speed: f32,
-    attack_speed: f32,
-    range: f32,
-    level: u8,
-    #[serde(skip_serializing)]
-    attack_timer: f32,
-    #[serde(skip_serializing)]
-    summon_timer: f32,
-    #[serde(skip_serializing)]
-    dots: Vec<DotEffect>,
-}
-
-#[derive(Clone)]
-struct DotEffect { remaining: f32, damage_per_second: f32 }
-
-#[derive(Clone, Serialize)]
-struct Building {
-    id: u64,
-    owner: usize,
-    kind: String,
-    x: f32,
-    y: f32,
+    z: f32,
     hp: f32,
     max_hp: f32,
     level: u8,
-}
-
-#[derive(Clone, Serialize)]
-struct CapturePoint { id: usize, x: f32, y: f32, owner: Option<usize> }
-
-#[derive(Clone)]
-struct GameState {
-    started: bool,
-    time: f32,
-    winner: Option<usize>,
-    units: Vec<Unit>,
-    buildings: Vec<Building>,
-    points: Vec<CapturePoint>,
-    next_id: u64,
-}
-
-#[derive(Serialize)]
-struct PublicPlayer {
-    id: String,
-    name: String,
-    color: String,
-    side: usize,
-    gold: u32,
     command: String,
-    connected: bool,
-    buff: Option<String>,
-    buff_cooldown: f32,
+    dest_x: f32,
+    dest_z: f32,
+    attack_cd: f32,
+    burn_remaining: f32,
+    burn_dps: f32,
+    burn_tick: f32,
+    poison_remaining: f32,
+    poison_dps: f32,
+    summon_cd: f32,
+    charge_cd: f32,
 }
-
-#[derive(Serialize)]
-struct Snapshot {
-    room_id: String,
-    room_name: String,
-    started: bool,
-    time: f32,
-    winner: Option<usize>,
-    players: Vec<PublicPlayer>,
+#[derive(Clone, Serialize, Deserialize)]
+struct GameState {
+    players: [PlayerState; 2],
     units: Vec<Unit>,
-    buildings: Vec<Building>,
-    points: Vec<CapturePoint>,
-    you_id: String,
+    elapsed: f32,
+    winner: Option<usize>,
+    next_unit_id: u64,
 }
-
-#[derive(Serialize)]
-struct RoomListItem {
+#[derive(Clone, Serialize)]
+struct RoomListing {
     id: String,
     name: String,
     players: usize,
-    has_password: bool,
-    host: String,
-}
-
-#[derive(Deserialize)]
-struct CreateRoomRequest { name: String, #[serde(default)] password: String, host_name: String }
-#[derive(Deserialize)]
-struct CheckRoomNameRequest { name: String }
-#[derive(Deserialize)]
-struct JoinRoomRequest { name: String, #[serde(default)] password: String }
-#[derive(Deserialize)]
-struct LeaveRoomRequest { player_id: String, token: String }
-#[derive(Deserialize)]
-struct WsQuery { player_id: String, token: String }
-
-#[derive(Serialize)]
-struct EnterResponse { room_id: String, player_id: String, token: String, color: String, side: usize }
-
-#[derive(Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-enum ClientMessage {
-    Deploy { unit: String, x: f32, y: f32, #[serde(default)] level: u8 },
-    BuildMine { x: f32, y: f32, #[serde(default)] level: u8 },
-    Command { mode: String },
-    RollBuff,
-    UpgradeMine,
-    Ping,
-}
-
-#[derive(Clone, Copy)]
-struct UnitConfig {
-    cost: u32, hp: f32, attack: f32, defense: f32, speed: f32,
-    attack_speed: f32, range: f32,
-}
-
-fn config(kind: &str) -> Option<UnitConfig> {
-    let c = match kind {
-        "vanguard" => UnitConfig { cost: 5, hp: 54.0, attack: 4.0, defense: 4.0, speed: 3.0, attack_speed: 5.0, range: 13.0 },
-        "archer" => UnitConfig { cost: 7, hp: 34.0, attack: 8.0, defense: 2.0, speed: 2.0, attack_speed: 7.0, range: 105.0 },
-        "shield" => UnitConfig { cost: 7, hp: 112.0, attack: 2.0, defense: 12.0, speed: 2.0, attack_speed: 3.0, range: 14.0 },
-        "mage" => UnitConfig { cost: 11, hp: 42.0, attack: 7.0, defense: 2.0, speed: 2.0, attack_speed: 5.0, range: 66.0 },
-        "cavalry" => UnitConfig { cost: 10, hp: 70.0, attack: 8.0, defense: 5.0, speed: 5.0, attack_speed: 5.0, range: 16.0 },
-        "elephant" => UnitConfig { cost: 12, hp: 98.0, attack: 9.0, defense: 7.0, speed: 5.0, attack_speed: 6.0, range: 23.0 },
-        "catapult" => UnitConfig { cost: 14, hp: 60.0, attack: 15.0, defense: 5.0, speed: 1.0, attack_speed: 2.0, range: 145.0 },
-        "general" => UnitConfig { cost: 15, hp: 205.0, attack: 2.0, defense: 6.0, speed: 0.0, attack_speed: 2.0, range: 25.0 },
-        "royal" => UnitConfig { cost: 0, hp: 69.0, attack: 5.5, defense: 5.5, speed: 4.5, attack_speed: 6.5, range: 13.0 },
-        _ => return None,
-    };
-    Some(c)
-}
-
-fn new_game() -> GameState {
-    GameState {
-        started: false, time: 0.0, winner: None, units: Vec::new(), next_id: 3,
-        buildings: vec![
-            Building { id: 1, owner: 0, kind: "castle".into(), x: 500.0, y: 105.0, hp: 2400.0, max_hp: 2400.0, level: 1 },
-            Building { id: 2, owner: 1, kind: "castle".into(), x: 500.0, y: 895.0, hp: 2400.0, max_hp: 2400.0, level: 1 },
-        ],
-        points: vec![
-            CapturePoint { id: 1, x: 355.0, y: 500.0, owner: None },
-            CapturePoint { id: 2, x: 645.0, y: 500.0, owner: None },
-        ],
-    }
-}
-
-fn clean_name(input: &str, min: usize, max: usize) -> Result<String, String> {
-    let name = input.trim();
-    if name.chars().count() < min || name.chars().count() > max {
-        return Err(format!("Tên phải dài từ {min} đến {max} ký tự."));
-    }
-    if name.chars().any(|c| c.is_control()) {
-        return Err("Tên chứa ký tự không hợp lệ.".into());
-    }
-    Ok(name.to_string())
-}
-
-fn snapshot(room: &Room, you_id: &str) -> Snapshot {
-    Snapshot {
-        room_id: room.id.clone(), room_name: room.name.clone(), started: room.game.started,
-        time: room.game.time, winner: room.game.winner,
-        players: room.players.iter().map(|p| PublicPlayer {
-            id: p.id.clone(), name: p.name.clone(), color: p.color.clone(), side: p.side,
-            gold: p.gold.floor().max(0.0) as u32, command: p.command.clone(), connected: p.connected,
-            buff: if room.game.time < p.buff_until { p.buff_name.clone() } else { None },
-            buff_cooldown: (p.buff_cooldown_until - room.game.time).max(0.0),
-        }).collect(),
-        units: room.game.units.clone(), buildings: room.game.buildings.clone(),
-        points: room.game.points.clone(), you_id: you_id.to_string(),
-    }
-}
-
-fn error_response(status: StatusCode, message: impl Into<String>) -> Response {
-    (status, Json(json!({ "error": message.into() }))).into_response()
-}
-
-async fn health() -> &'static str { "ok" }
-
-async fn list_rooms(State(state): State<AppState>) -> Json<Vec<RoomListItem>> {
-    let map = state.rooms.read().await;
-    let mut rooms = Vec::new();
-    for room_arc in map.values() {
-        let room = room_arc.lock().await;
-        if room.players.len() < 2 {
-            rooms.push(RoomListItem {
-                id: room.id.clone(), name: room.name.clone(), players: room.players.len(),
-                has_password: room.password.is_some(),
-                host: room.players.first().map(|p| p.name.clone()).unwrap_or_else(|| "Khách".into()),
-            });
-        }
-    }
-    rooms.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-    Json(rooms)
-}
-
-async fn check_room_name(State(state): State<AppState>, Json(req): Json<CheckRoomNameRequest>) -> Response {
-    let room_name = match clean_name(&req.name, 3, 28) { Ok(v) => v, Err(e) => return error_response(StatusCode::BAD_REQUEST, e) };
-    let rooms = state.rooms.read().await;
-    for room_arc in rooms.values() {
-        let room = room_arc.lock().await;
-        if room.name.eq_ignore_ascii_case(&room_name) {
-            return error_response(StatusCode::CONFLICT, "Tên phòng bị trùng, đặt tên khác.");
-        }
-    }
-    Json(json!({"available": true})).into_response()
-}
-
-async fn create_room(State(state): State<AppState>, Json(req): Json<CreateRoomRequest>) -> Response {
-    let room_name = match clean_name(&req.name, 3, 28) { Ok(v) => v, Err(e) => return error_response(StatusCode::BAD_REQUEST, e) };
-    let host_name = match clean_name(&req.host_name, 2, 18) { Ok(v) => v, Err(e) => return error_response(StatusCode::BAD_REQUEST, e) };
-    if req.password.chars().count() > 40 { return error_response(StatusCode::BAD_REQUEST, "Mật khẩu phòng tối đa 40 ký tự."); }
-    let mut rooms = state.rooms.write().await;
-    if rooms.values().any(|r| r.try_lock().map(|g| g.name.eq_ignore_ascii_case(&room_name)).unwrap_or(false)) {
-        return error_response(StatusCode::CONFLICT, "Tên phòng bị trùng, đặt tên khác.");
-    }
-    // If a room happens to be busy during the duplicate scan, check it without holding the map's write lock twice.
-    for existing in rooms.values() {
-        let r = existing.lock().await;
-        if r.name.eq_ignore_ascii_case(&room_name) { return error_response(StatusCode::CONFLICT, "Tên phòng bị trùng, đặt tên khác."); }
-    }
-    let mut rng = rand::thread_rng();
-    let first_color = if rng.gen_bool(0.5) { "blue" } else { "red" };
-    let player_id = Uuid::new_v4().to_string();
-    let token = Uuid::new_v4().to_string();
-    let room_id = Uuid::new_v4().simple().to_string()[..10].to_string();
-    let host = Player {
-        id: player_id.clone(), name: host_name, token: token.clone(), color: first_color.into(), side: 0,
-        gold: 20.0, command: "attack".into(), connected: false, tx: None,
-        buff_until: 0.0, buff_kind: None, buff_name: None, buff_cooldown_until: 0.0,
-    };
-    let room = Arc::new(Mutex::new(Room {
-        id: room_id.clone(), name: room_name, password: if req.password.trim().is_empty() { None } else { Some(req.password) },
-        players: vec![host], game: new_game(),
-    }));
-    rooms.insert(room_id.clone(), room.clone());
-    drop(rooms);
-    spawn_room_loop(room);
-    Json(EnterResponse { room_id, player_id, token, color: first_color.into(), side: 0 }).into_response()
-}
-
-async fn leave_room(Path(room_id): Path<String>, State(state): State<AppState>, Json(req): Json<LeaveRoomRequest>) -> Response {
-    let room_arc = {
-        let rooms = state.rooms.read().await;
-        match rooms.get(&room_id) { Some(r) => r.clone(), None => return error_response(StatusCode::NOT_FOUND, "Phòng không tồn tại.") }
-    };
-    let mut room = room_arc.lock().await;
-    let index = match room.players.iter().position(|p| p.id == req.player_id && p.token == req.token) {
-        Some(i) => i, None => return error_response(StatusCode::UNAUTHORIZED, "Phiên khách không hợp lệ.")
-    };
-    room.players.remove(index);
-    if room.players.is_empty() {
-        drop(room);
-        let mut rooms = state.rooms.write().await;
-        rooms.remove(&room_id);
-        return Json(json!({"ok": true})).into_response();
-    }
-    // A room that loses a player returns to a clean waiting state, preventing a disconnected guest
-    // from occupying the second seat or leaving an abandoned army in the next match.
-    reset_waiting_room(&mut room);
-    drop(room);
-    Json(json!({"ok": true})).into_response()
-}
-
-async fn join_room(Path(room_id): Path<String>, State(state): State<AppState>, Json(req): Json<JoinRoomRequest>) -> Response {
-    let name = match clean_name(&req.name, 2, 18) { Ok(v) => v, Err(e) => return error_response(StatusCode::BAD_REQUEST, e) };
-    let room_arc = {
-        let rooms = state.rooms.read().await;
-        match rooms.get(&room_id) { Some(r) => r.clone(), None => return error_response(StatusCode::NOT_FOUND, "Phòng không tồn tại hoặc đã đóng.") }
-    };
-    let mut room = room_arc.lock().await;
-    if room.players.len() >= 2 { return error_response(StatusCode::CONFLICT, "Phòng đã đủ 2 người chơi."); }
-    if room.password.as_deref().unwrap_or("") != req.password { return error_response(StatusCode::UNAUTHORIZED, "Mật khẩu phòng không đúng."); }
-    let side = room.players.len();
-    let color = if room.players.first().map(|p| p.color.as_str()) == Some("blue") { "red" } else { "blue" };
-    let player_id = Uuid::new_v4().to_string();
-    let token = Uuid::new_v4().to_string();
-    room.players.push(Player {
-        id: player_id.clone(), name, token: token.clone(), color: color.into(), side, gold: 20.0,
-        command: "attack".into(), connected: false, tx: None,
-        buff_until: 0.0, buff_kind: None, buff_name: None, buff_cooldown_until: 0.0,
-    });
-    room.game.started = true;
-    Json(EnterResponse { room_id, player_id, token, color: color.into(), side }).into_response()
-}
-
-fn spawn_room_loop(room_arc: Arc<Mutex<Room>>) {
-    tokio::spawn(async move {
-        let mut interval = time::interval(Duration::from_millis(100));
-        loop {
-            interval.tick().await;
-            let mut room = room_arc.lock().await;
-            if room.players.is_empty() { break; }
-            if room.players.len() == 2 && room.game.started && room.game.winner.is_none() {
-                tick_game(&mut room, 0.1);
-            }
-            for player in &room.players {
-                if let Some(tx) = &player.tx {
-                    let state = snapshot(&room, &player.id);
-                    if let Ok(encoded) = serde_json::to_string(&json!({"type":"state", "state":state})) {
-                        let _ = tx.send(encoded);
-                    }
-                }
-            }
-        }
-    });
-}
-
-fn is_own_half(side: usize, y: f32, kind: &str) -> bool {
-    if !(15.0..=WORLD_MAX - 15.0).contains(&y) { return false; }
-    if kind == "castle" { return true; }
-    if side == 0 { y < RIVER_MIN - 3.0 } else { y > RIVER_MAX + 3.0 }
-}
-
-async fn apply_message(room_arc: &Arc<Mutex<Room>>, player_id: &str, msg: ClientMessage) {
-    let mut room = room_arc.lock().await;
-    let player_index = match room.players.iter().position(|p| p.id == player_id) { Some(i) => i, None => return };
-    let owner = room.players[player_index].side;
-    match msg {
-        ClientMessage::Deploy { unit, x, y, level } => {
-            if room.game.winner.is_some() || room.players.len() < 2 { return; }
-            let level = level.clamp(1, MAX_LEVEL);
-            if !is_own_half(owner, y, &unit) { return; }
-            let cfg = match config(&unit) { Some(c) if unit != "royal" => c, _ => return };
-            let deployment_cost = (cfg.cost as f32 * (1.0 + 0.18 * (level.saturating_sub(1) as f32))).ceil();
-            if room.players[player_index].gold < deployment_cost { return; }
-            room.players[player_index].gold -= deployment_cost;
-            let multiplier = 1.0 + 0.13 * (level.saturating_sub(1) as f32);
-            let id = room.game.next_id; room.game.next_id += 1;
-            room.game.units.push(Unit {
-                id, owner, kind: unit, x: x.clamp(15.0, 985.0), y: y.clamp(15.0, 985.0),
-                hp: cfg.hp * (1.0 + 0.18 * (level.saturating_sub(1) as f32)),
-                max_hp: cfg.hp * (1.0 + 0.18 * (level.saturating_sub(1) as f32)),
-                attack: cfg.attack * multiplier, defense: cfg.defense * multiplier,
-                speed: cfg.speed * multiplier, attack_speed: cfg.attack_speed * multiplier,
-                range: cfg.range * (1.0 + 0.04 * (level.saturating_sub(1) as f32)), level,
-                attack_timer: 0.2, summon_timer: 3.0, dots: Vec::new(),
-            });
-        }
-        ClientMessage::BuildMine { x, y, level: _ } => {
-            if room.game.winner.is_some() || room.players.len() < 2 || !is_own_half(owner, y, "mine") { return; }
-            if room.game.buildings.iter().filter(|b| b.owner == owner && b.kind == "mine").count() >= 5 { return; }
-            let level = 1_u8;
-            let id = room.game.next_id; room.game.next_id += 1;
-            let max_hp = 125.0 + (level.saturating_sub(1) as f32) * 25.0;
-            room.game.buildings.push(Building { id, owner, kind: "mine".into(), x: x.clamp(20.0, 980.0), y: y.clamp(20.0, 980.0), hp: max_hp, max_hp, level });
-        }
-        ClientMessage::Command { mode } => {
-            if ["attack", "retreat", "defend", "occupy"].contains(&mode.as_str()) { room.players[player_index].command = mode; }
-        }
-        ClientMessage::RollBuff => {
-            if room.game.winner.is_some() || room.game.time < room.players[player_index].buff_cooldown_until { return; }
-            let options = [("frenzy", "Điên cuồng"), ("agility", "Nhanh nhẹn"), ("speed", "Tốc đánh"), ("heal", "Hồi máu"), ("poison", "Độc dược")];
-            let chosen = options[rand::thread_rng().gen_range(0..options.len())];
-            let current_time = room.game.time;
-            {
-                let p = &mut room.players[player_index];
-                p.buff_kind = Some(chosen.0.into()); p.buff_name = Some(chosen.1.into());
-                p.buff_until = current_time + if chosen.0 == "heal" { 2.5 } else { 9.0 };
-                p.buff_cooldown_until = current_time + 15.0;
-            }
-            if chosen.0 == "heal" {
-                for unit in room.game.units.iter_mut().filter(|u| u.owner == owner) { unit.hp = (unit.hp + unit.max_hp * 0.25).min(unit.max_hp); }
-            }
-        }
-        ClientMessage::UpgradeMine => {
-            let target = room.game.buildings.iter().enumerate()
-                .filter(|(_, b)| b.owner == owner && b.kind == "mine" && b.level < MAX_LEVEL)
-                .min_by_key(|(_, b)| b.level).map(|(i, b)| (i, b.level));
-            if let Some((idx, current_level)) = target {
-                let cost = 8.0 * current_level as f32;
-                if room.players[player_index].gold >= cost {
-                    room.players[player_index].gold -= cost;
-                    let b = &mut room.game.buildings[idx];
-                    b.level += 1; b.max_hp += 25.0; b.hp = (b.hp + 25.0).min(b.max_hp);
-                }
-            }
-        }
-        ClientMessage::Ping => {}
-    }
-}
-
-async fn websocket_handler(
-    ws: WebSocketUpgrade, Path(room_id): Path<String>, Query(query): Query<WsQuery>, State(state): State<AppState>,
-) -> Response {
-    let room_arc = {
-        let rooms = state.rooms.read().await;
-        match rooms.get(&room_id) { Some(r) => r.clone(), None => return error_response(StatusCode::NOT_FOUND, "Phòng không tồn tại.") }
-    };
-    {
-        let room = room_arc.lock().await;
-        if !room.players.iter().any(|p| p.id == query.player_id && p.token == query.token) {
-            return error_response(StatusCode::UNAUTHORIZED, "Phiên khách không hợp lệ, hãy vào phòng lại.");
-        }
-    }
-    let rooms = state.rooms.clone();
-    ws.on_upgrade(move |socket| socket_session(socket, room_arc, rooms, room_id, query.player_id))
-}
-
-async fn socket_session(socket: WebSocket, room_arc: Arc<Mutex<Room>>, rooms: RoomMap, room_id: String, player_id: String) {
-    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-    {
-        let mut room = room_arc.lock().await;
-        if let Some(p) = room.players.iter_mut().find(|p| p.id == player_id) { p.connected = true; p.tx = Some(tx); }
-    }
-    let (mut sender, mut receiver) = socket.split();
-    loop {
-        tokio::select! {
-            outgoing = rx.recv() => {
-                match outgoing {
-                    Some(text) => if sender.send(Message::Text(text)).await.is_err() { break; },
-                    None => break,
-                }
-            }
-            incoming = receiver.next() => {
-                match incoming {
-                    Some(Ok(Message::Text(text))) => {
-                        if let Ok(msg) = serde_json::from_str::<ClientMessage>(&text) { apply_message(&room_arc, &player_id, msg).await; }
-                    }
-                    Some(Ok(Message::Ping(data))) => { if sender.send(Message::Pong(data)).await.is_err() { break; } }
-                    Some(Ok(Message::Close(_))) | None | Some(Err(_)) => break,
-                    _ => {}
-                }
-            }
-        }
-    }
-    let mut room = room_arc.lock().await;
-    let old_len = room.players.len();
-    room.players.retain(|p| p.id != player_id);
-    if room.players.len() < old_len && room.players.len() == 1 {
-        reset_waiting_room(&mut room);
-    }
-    let became_empty = room.players.is_empty();
-    drop(room);
-    if became_empty {
-        let mut map = rooms.write().await;
-        map.remove(&room_id);
-    }
-}
-
-fn reset_waiting_room(room: &mut Room) {
-    if let Some(player) = room.players.first_mut() {
-        player.side = 0;
-        player.gold = 20.0;
-        player.command = "attack".into();
-        player.buff_until = 0.0;
-        player.buff_kind = None;
-        player.buff_name = None;
-        player.buff_cooldown_until = 0.0;
-    }
-    room.game = new_game();
-    room.game.started = false;
-}
-
-#[derive(Clone, Copy)]
-enum TargetKind { Unit(u64), Building(u64) }
-#[derive(Clone)]
-struct Target { kind: TargetKind, x: f32, y: f32, hp: f32 }
-#[derive(Clone)]
-struct AttackIntent { attacker: u64, target: TargetKind, damage: f32, aoe: f32, dash: bool, poison: bool }
-
-fn dist(ax: f32, ay: f32, bx: f32, by: f32) -> f32 { ((ax-bx).powi(2) + (ay-by).powi(2)).sqrt() }
-fn damage_after_armor(attack: f32, defense: f32) -> f32 { (attack - defense * 0.35).max(attack * 0.25).max(0.5) }
-fn home(owner: usize) -> (f32, f32) { if owner == 0 { (500.0, 125.0) } else { (500.0, 875.0) } }
-fn buff_modifier(room: &Room, owner: usize, kind: &str) -> f32 {
-    let p = match room.players.get(owner) { Some(p) => p, None => return 0.0 };
-    if room.game.time >= p.buff_until { return 0.0; }
-    match (p.buff_kind.as_deref(), kind) {
-        (Some("frenzy"), _) => 2.0,
-        (Some("agility"), "speed") => 3.0,
-        (Some("speed"), "attack_speed") => 3.0,
-        _ => 0.0,
-    }
-}
-
-fn tick_game(room: &mut Room, dt: f32) {
-    room.game.time += dt;
-    // Mines produce one gold per second per level; held points add a small income bonus.
-    for owner in 0..2 {
-        let mine_income: f32 = room.game.buildings.iter().filter(|b| b.owner == owner && b.kind == "mine").map(|b| b.level as f32).sum();
-        let point_income = room.game.points.iter().filter(|p| p.owner == Some(owner)).count() as f32 * 0.75;
-        room.players[owner].gold = (room.players[owner].gold + (mine_income + point_income) * dt).min(9999.0);
-    }
-    // Damage-over-time ticks.
-    for unit in &mut room.game.units {
-        let mut damage = 0.0;
-        for dot in &mut unit.dots { let applied = dot.damage_per_second * dt; damage += applied; dot.remaining -= dt; }
-        unit.hp -= damage;
-        unit.dots.retain(|d| d.remaining > 0.0);
-        unit.attack_timer = (unit.attack_timer - dt).max(0.0);
-        unit.summon_timer -= dt;
-    }
-    room.game.units.retain(|u| u.hp > 0.0);
-    room.game.buildings.retain(|b| b.hp > 0.0);
-    if room.game.winner.is_none() {
-        if !room.game.buildings.iter().any(|b| b.kind == "castle" && b.owner == 0) { room.game.winner = Some(1); }
-        if !room.game.buildings.iter().any(|b| b.kind == "castle" && b.owner == 1) { room.game.winner = Some(0); }
-    }
-    if room.game.winner.is_some() { return; }
-
-    // Control points change hands when only one team is present nearby.
-    for point_index in 0..room.game.points.len() {
-        let (px, py) = (room.game.points[point_index].x, room.game.points[point_index].y);
-        let blue = room.game.units.iter().any(|u| u.owner == 0 && dist(u.x,u.y,px,py) < 37.0);
-        let red = room.game.units.iter().any(|u| u.owner == 1 && dist(u.x,u.y,px,py) < 37.0);
-        if blue && !red { room.game.points[point_index].owner = Some(0); }
-        if red && !blue { room.game.points[point_index].owner = Some(1); }
-    }
-
-    let units_snapshot = room.game.units.clone();
-    let buildings_snapshot = room.game.buildings.clone();
-    let commands: Vec<String> = room.players.iter().map(|p| p.command.clone()).collect();
-    let mut moves: Vec<(u64, f32, f32)> = Vec::new();
-    let mut attacks: Vec<AttackIntent> = Vec::new();
-    let mut summons: Vec<Unit> = Vec::new();
-
-    for unit in &units_snapshot {
-        let owner = unit.owner;
-        let mode = commands.get(owner).map(String::as_str).unwrap_or("attack");
-        let is_general = unit.kind == "general";
-        let my_attack = unit.attack + buff_modifier(room, owner, "attack");
-        let my_speed = (unit.speed + buff_modifier(room, owner, "speed")).max(0.0);
-        let my_attack_speed = (unit.attack_speed + buff_modifier(room, owner, "attack_speed")).max(0.5);
-        if is_general {
-            let summon_ready = room.game.units.iter().find(|u| u.id == unit.id).map(|u| u.summon_timer <= 0.0).unwrap_or(false);
-            if summon_ready {
-                    let count = 2 + unit.level.saturating_sub(1) as usize;
-                    for i in 0..count {
-                        let cfg = config("royal").unwrap();
-                        let id = room.game.next_id + summons.len() as u64;
-                        let offset = (i as f32 - count as f32 / 2.0) * 2.2;
-                        summons.push(Unit { id, owner, kind: "royal".into(), x: (unit.x + offset).clamp(10.0,990.0), y: (unit.y + if owner==0 { 5.0 } else {-5.0}).clamp(10.0,990.0), hp: cfg.hp * (1.0+0.18*(unit.level.saturating_sub(1) as f32)), max_hp: cfg.hp*(1.0+0.18*(unit.level.saturating_sub(1) as f32)), attack: cfg.attack*(1.0+0.13*(unit.level.saturating_sub(1) as f32)), defense: cfg.defense*(1.0+0.13*(unit.level.saturating_sub(1) as f32)), speed: cfg.speed*(1.0+0.13*(unit.level.saturating_sub(1) as f32)), attack_speed: cfg.attack_speed*(1.0+0.13*(unit.level.saturating_sub(1) as f32)), range: cfg.range, level: unit.level, attack_timer:0.25, summon_timer:3.0, dots:Vec::new() });
-                    }
-                    if let Some(current_mut) = room.game.units.iter_mut().find(|u| u.id == unit.id) { current_mut.summon_timer = 3.0; }
-            }
-        }
-
-        let mut targets: Vec<Target> = Vec::new();
-        for enemy in units_snapshot.iter().filter(|u| u.owner != owner && u.hp > 0.0) {
-            targets.push(Target { kind: TargetKind::Unit(enemy.id), x: enemy.x, y: enemy.y, hp: enemy.hp });
-        }
-        for b in buildings_snapshot.iter().filter(|b| b.owner != owner && b.hp > 0.0) {
-            targets.push(Target { kind: TargetKind::Building(b.id), x: b.x, y: b.y, hp: b.hp });
-        }
-        if targets.is_empty() { continue; }
-
-        let target = if mode == "occupy" {
-            let enemy_near = targets.iter().filter(|t| matches!(t.kind, TargetKind::Unit(_))).min_by(|a,b| dist(unit.x,unit.y,a.x,a.y).total_cmp(&dist(unit.x,unit.y,b.x,b.y)));
-            if let Some(t) = enemy_near.filter(|t| dist(unit.x,unit.y,t.x,t.y) < 75.0) { Some((*t).clone()) }
-            else {
-                room.game.points.iter().filter(|p| p.owner != Some(owner)).min_by(|a,b| dist(unit.x,unit.y,a.x,a.y).total_cmp(&dist(unit.x,unit.y,b.x,b.y))).map(|p| Target { kind: TargetKind::Building(u64::MAX - p.id as u64), x:p.x, y:p.y, hp:1.0 })
-            }
-        } else if mode == "defend" || mode == "retreat" {
-            let nearest = targets.iter().filter(|t| matches!(t.kind, TargetKind::Unit(_))).min_by(|a,b| dist(unit.x,unit.y,a.x,a.y).total_cmp(&dist(unit.x,unit.y,b.x,b.y)));
-            if let Some(t) = nearest.filter(|t| dist(unit.x,unit.y,t.x,t.y) < if mode=="retreat" { 55.0 } else { 115.0 }) { Some((*t).clone()) }
-            else { None }
-        } else {
-            targets.iter().min_by(|a,b| {
-                let da = dist(unit.x,unit.y,a.x,a.y) + if matches!(a.kind, TargetKind::Building(_)) { 18.0 } else { 0.0 };
-                let db = dist(unit.x,unit.y,b.x,b.y) + if matches!(b.kind, TargetKind::Building(_)) { 18.0 } else { 0.0 };
-                da.total_cmp(&db)
-            }).cloned()
-        };
-
-        if mode == "defend" || mode == "retreat" {
-            if target.is_none() {
-                let (hx,hy)=home(owner);
-                let d=dist(unit.x,unit.y,hx,hy);
-                if d > 38.0 && my_speed > 0.0 { let step=(my_speed*dt*1.9).min(d); moves.push((unit.id, unit.x+(hx-unit.x)/d*step, unit.y+(hy-unit.y)/d*step)); }
-                continue;
-            }
-        }
-        let target = match target { Some(t) => t, None => continue };
-        let distance = dist(unit.x, unit.y, target.x, target.y);
-        let attack_range = unit.range.max(8.0);
-        if distance <= attack_range {
-            let current_timer = room.game.units.iter().find(|u| u.id == unit.id).map(|u| u.attack_timer).unwrap_or(1.0);
-            if current_timer <= 0.0 && target.hp > 0.0 {
-                let poison = room.players.get(owner).map(|p| p.buff_kind.as_deref()==Some("poison") && room.game.time < p.buff_until).unwrap_or(false);
-                let aoe = if unit.kind == "mage" { 20.0 } else if unit.kind == "catapult" { 26.0 } else { 0.0 };
-                attacks.push(AttackIntent { attacker: unit.id, target: target.kind.clone(), damage: my_attack, aoe, dash: unit.kind == "cavalry", poison });
-                if let Some(current) = room.game.units.iter_mut().find(|u| u.id == unit.id) { current.attack_timer = (5.0/my_attack_speed).max(0.45); }
-            }
-        } else if my_speed > 0.0 && mode != "occupy" || (mode=="occupy" && distance > 18.0) {
-            let d=distance.max(0.01); let step=(my_speed*dt*1.8).min((d-attack_range.min(d)).max(0.0));
-            if step>0.0 { moves.push((unit.id, unit.x+(target.x-unit.x)/d*step, unit.y+(target.y-unit.y)/d*step)); }
-        }
-    }
-
-    for (id,x,y) in moves {
-        if let Some(u)=room.game.units.iter_mut().find(|u|u.id==id) { u.x=x.clamp(10.0,990.0); u.y=y.clamp(10.0,990.0); }
-    }
-    for attack in attacks {
-        let attacker_owner = room.game.units.iter().find(|u|u.id==attack.attacker).map(|u|u.owner).unwrap_or(0);
-        let origin = room.game.units.iter().find(|u|u.id==attack.attacker).map(|u|(u.x,u.y));
-        let (tx,ty) = match &attack.target {
-            TargetKind::Unit(id) => room.game.units.iter().find(|u|u.id==*id).map(|u|(u.x,u.y)).unwrap_or((0.0,0.0)),
-            TargetKind::Building(id) if *id < u64::MAX-10 => room.game.buildings.iter().find(|b|b.id==*id).map(|b|(b.x,b.y)).unwrap_or((0.0,0.0)),
-            TargetKind::Building(id) => { let pid=(u64::MAX-*id) as usize; room.game.points.iter().find(|p|p.id==pid).map(|p|(p.x,p.y)).unwrap_or((0.0,0.0)) }
-        };
-        if attack.dash {
-            if let Some((ox,oy)) = origin {
-                let d = dist(ox,oy,tx,ty).max(0.01);
-                let travel = 20.0_f32.min(d);
-                if let Some(attacker) = room.game.units.iter_mut().find(|u|u.id==attack.attacker) {
-                    attacker.x = (ox + (tx-ox)/d*travel).clamp(10.0,990.0);
-                    attacker.y = (oy + (ty-oy)/d*travel).clamp(10.0,990.0);
-                }
-            }
-        }
-        if let TargetKind::Building(id) = attack.target {
-            if id >= u64::MAX-10 { continue; } // capture objectives are not damageable
-        }
-        let targets: Vec<(bool,u64)> = match attack.target {
-            TargetKind::Unit(id) => {
-                let mut out=vec![(true,id)];
-                if attack.aoe>0.0 { for u in room.game.units.iter().filter(|u|u.owner!=attacker_owner && u.id!=id && dist(u.x,u.y,tx,ty)<=attack.aoe) { out.push((true,u.id)); } }
-                if attack.dash { if let Some((ox,oy))=origin { for u in room.game.units.iter().filter(|u|u.owner!=attacker_owner && u.id!=id && point_line_distance(u.x,u.y,ox,oy,tx,ty)<7.0) { out.push((true,u.id)); } } }
-                out
-            }
-            TargetKind::Building(id) => {
-                let mut out=vec![(false,id)];
-                if attack.aoe>0.0 { for b in room.game.buildings.iter().filter(|b|b.owner!=attacker_owner && b.id!=id && dist(b.x,b.y,tx,ty)<=attack.aoe) { out.push((false,b.id)); } }
-                out
-            }
-        };
-        let attacker_is_mage = units_snapshot.iter().any(|u| u.id == attack.attacker && u.kind == "mage");
-        let defense_bonuses = [buff_modifier(room, 0, "defense"), buff_modifier(room, 1, "defense")];
-        for (is_unit,id) in targets {
-            if is_unit {
-                if let Some(target)=room.game.units.iter_mut().find(|u|u.id==id && u.owner!=attacker_owner) {
-                    let defense = target.defense + defense_bonuses.get(target.owner).copied().unwrap_or(0.0);
-                    let damage=damage_after_armor(attack.damage,defense); target.hp-=damage;
-                    if attack.dash { target.hp-=attack.damage*0.25; }
-                    if attack.aoe>0.0 && attack.damage>0.0 && attacker_is_mage {
-                        target.dots.push(DotEffect{remaining:4.0,damage_per_second:attack.damage});
-                    }
-                    if attack.poison { target.dots.push(DotEffect{remaining:2.0,damage_per_second:attack.damage*0.125}); }
-                }
-            } else if let Some(target)=room.game.buildings.iter_mut().find(|b|b.id==id && b.owner!=attacker_owner) {
-                let damage=damage_after_armor(attack.damage, if target.kind=="castle" {8.0}else{1.0}); target.hp-=damage;
-            }
-        }
-    }
-    if !summons.is_empty() {
-        room.game.next_id += summons.len() as u64;
-        room.game.units.extend(summons);
-    }
-    // Cull dead objects now so destroyed castles end the match without a long visual delay.
-    room.game.units.retain(|u|u.hp>0.0);
-    room.game.buildings.retain(|b|b.hp>0.0);
-    if !room.game.buildings.iter().any(|b|b.kind=="castle"&&b.owner==0) { room.game.winner=Some(1); }
-    if !room.game.buildings.iter().any(|b|b.kind=="castle"&&b.owner==1) { room.game.winner=Some(0); }
-}
-
-fn point_line_distance(px:f32,py:f32,x1:f32,y1:f32,x2:f32,y2:f32)->f32 {
-    let dx=x2-x1; let dy=y2-y1; let denom=dx*dx+dy*dy;
-    if denom<0.001 { return dist(px,py,x1,y1); }
-    let t=(((px-x1)*dx+(py-y1)*dy)/denom).clamp(0.0,1.0);
-    dist(px,py,x1+t*dx,y1+t*dy)
+    locked: bool,
 }
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().with_env_filter(std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into())).init();
-    let state=AppState{rooms:Arc::new(RwLock::new(HashMap::new()))};
-    let app=Router::new()
-        .route("/healthz",get(health))
-        .route("/api/rooms",get(list_rooms).post(create_room))
-        .route("/api/rooms/check-name",post(check_room_name))
-        .route("/api/rooms/:room_id/join",post(join_room))
-        .route("/api/rooms/:room_id/leave",post(leave_room))
-        .route("/ws/:room_id",get(websocket_handler))
-        .fallback_service(ServeDir::new("public").append_index_html_on_directories(true))
-        .layer(CorsLayer::permissive())
+    let shared = Arc::new(Mutex::new(ServerState {
+        clients: HashMap::new(), rooms: HashMap::new(), next_client_id: 1, next_room_id: 1,
+    }));
+    let state = AppState { shared: shared.clone() };
+    tokio::spawn(tick_loop(shared));
+
+    let app = Router::new()
+        .route("/ws", get(ws_handler))
+        .fallback_service(ServeDir::new("static").append_index_html_on_directories(true))
         .with_state(state);
-    let port:u16=std::env::var("PORT").ok().and_then(|s|s.parse().ok()).unwrap_or(10000);
-    let addr=SocketAddr::from(([0,0,0,0],port));
-    info!("Emperor's Great Battle listening on {addr}");
-    let listener=tokio::net::TcpListener::bind(addr).await.expect("failed to bind listener");
-    if let Err(e)=axum::serve(listener,app).await { error!("server error: {e}"); }
+    let port = env::var("PORT").ok().and_then(|s| s.parse::<u16>().ok()).unwrap_or(10000);
+    let listener = TcpListener::bind(("0.0.0.0", port)).await.expect("bind port");
+    println!("Emperor's Great Battle listening on 0.0.0.0:{port}");
+    axum::serve(listener, app).await.expect("serve");
+}
+
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, state.shared))
+}
+
+async fn handle_socket(socket: WebSocket, shared: Shared) {
+    let (mut ws_tx, mut ws_rx) = socket.split();
+    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+    let id = {
+        let mut s = shared.lock().unwrap();
+        let id = s.next_client_id;
+        s.next_client_id += 1;
+        s.clients.insert(id, Client { tx, name: format!("Guest-{id}"), room_id: None, seat: None });
+        id
+    };
+    let writer = tokio::spawn(async move {
+        while let Some(text) = rx.recv().await {
+            if ws_tx.send(Message::Text(text.into())).await.is_err() { break; }
+        }
+    });
+    send_json(&shared, id, json!({"type":"connected","clientId":id}));
+    send_rooms(&shared);
+
+    while let Some(Ok(msg)) = ws_rx.next().await {
+        match msg {
+            Message::Text(text) => handle_message(&shared, id, text.as_str()),
+            Message::Close(_) => break,
+            Message::Ping(_) | Message::Pong(_) | Message::Binary(_) => {},
+        }
+    }
+    disconnect_client(&shared, id);
+    writer.abort();
+}
+
+fn handle_message(shared: &Shared, client_id: ClientId, text: &str) {
+    let Ok(v) = serde_json::from_str::<Value>(text) else { return; };
+    let Some(kind) = v.get("type").and_then(Value::as_str) else { return; };
+    match kind {
+        "set_name" => {
+            let name = clean_name(v.get("name").and_then(Value::as_str).unwrap_or(""));
+            if name.chars().count() < 2 { send_json(shared, client_id, json!({"type":"error","message":"Hãy nhập tên từ 2 đến 20 ký tự."})); return; }
+            let mut s = shared.lock().unwrap();
+            if let Some(c) = s.clients.get_mut(&client_id) { c.name = name.clone(); }
+            send_json_locked(&s, client_id, &json!({"type":"name_saved","name":name}));
+        }
+        "list_rooms" => send_rooms(shared),
+        "create_room" => create_room(shared, client_id, &v),
+        "join_room" => join_room(shared, client_id, &v),
+        "leave_room" => leave_room(shared, client_id),
+        "place_unit" => place_unit(shared, client_id, &v),
+        "unit_command" => command_units(shared, client_id, &v),
+        "upgrade_unit" => upgrade_unit(shared, client_id, &v),
+        "roll_potion" => roll_potion(shared, client_id),
+        "ping" => send_json(shared, client_id, json!({"type":"pong"})),
+        _ => send_json(shared, client_id, json!({"type":"error","message":"Lệnh không hợp lệ."})),
+    }
+}
+
+fn clean_name(input: &str) -> String {
+    input.chars().filter(|c| !c.is_control()).take(20).collect::<String>().trim().to_string()
+}
+fn clean_room_name(input: &str) -> String {
+    input.chars().filter(|c| !c.is_control()).take(32).collect::<String>().trim().to_string()
+}
+fn send_json(shared: &Shared, id: ClientId, value: Value) {
+    let s = shared.lock().unwrap();
+    send_json_locked(&s, id, &value);
+}
+fn send_json_locked(s: &ServerState, id: ClientId, value: &Value) {
+    if let Some(c) = s.clients.get(&id) { let _ = c.tx.send(value.to_string()); }
+}
+fn send_room_locked(s: &ServerState, room_id: &str, value: &Value) {
+    if let Some(room) = s.rooms.get(room_id) {
+        for id in room.players.iter().flatten() { send_json_locked(s, *id, value); }
+    }
+}
+fn send_rooms(shared: &Shared) {
+    let s = shared.lock().unwrap();
+    let rooms: Vec<RoomListing> = s.rooms.values().filter(|r| r.players.iter().any(Option::is_some) && r.game.as_ref().map_or(true, |g| g.winner.is_none())).map(|r| RoomListing {
+        id: r.id.clone(), name: r.name.clone(), players: r.players.iter().filter(|p| p.is_some()).count(), locked: !r.password.is_empty(),
+    }).collect();
+    let msg = json!({"type":"rooms","rooms":rooms});
+    for c in s.clients.values() { let _ = c.tx.send(msg.to_string()); }
+}
+
+fn create_room(shared: &Shared, client_id: ClientId, v: &Value) {
+    let room_name = clean_room_name(v.get("roomName").and_then(Value::as_str).unwrap_or(""));
+    let password = v.get("password").and_then(Value::as_str).unwrap_or("").chars().take(48).collect::<String>();
+    if room_name.len() < 2 {
+        send_json(shared, client_id, json!({"type":"error","message":"Tên phòng phải có ít nhất 2 ký tự."})); return;
+    }
+    let mut s = shared.lock().unwrap();
+    let Some(client) = s.clients.get(&client_id) else { return; };
+    if client.room_id.is_some() {
+        send_json_locked(&s, client_id, &json!({"type":"error","message":"Bạn đang ở trong một phòng."})); return;
+    }
+    if s.rooms.values().any(|r| r.name.to_lowercase() == room_name.to_lowercase()) {
+        send_json_locked(&s, client_id, &json!({"type":"room_name_taken","message":"Tên phòng bị trùng, đặt tên khác."})); return;
+    }
+    let username = client.name.clone();
+    let n = s.next_room_id; s.next_room_id += 1;
+    let id = format!("battle-{n}");
+    let mut rng = rand::thread_rng();
+    let colors = if rng.gen_bool(0.5) { ["blue".to_string(), "red".to_string()] } else { ["red".to_string(), "blue".to_string()] };
+    let mut room = Room {
+        id: id.clone(), name: room_name.clone(), password, players: [Some(client_id), None],
+        names: [Some(username.clone()), None], colors, game: None,
+    };
+    room.game = None;
+    s.rooms.insert(id.clone(), room);
+    if let Some(c) = s.clients.get_mut(&client_id) { c.room_id = Some(id.clone()); c.seat = Some(0); }
+    send_json_locked(&s, client_id, &json!({"type":"joined","roomId":id,"roomName":room_name,"seat":0,"waiting":true,"players":[username,null]}));
+    send_room_locked(&s, &id, &json!({"type":"room_status","roomName":room_name,"players":[username,null],"waiting":true}));
+    drop(s);
+    send_rooms(shared);
+}
+
+fn join_room(shared: &Shared, client_id: ClientId, v: &Value) {
+    let room_id = v.get("roomId").and_then(Value::as_str).unwrap_or("").to_string();
+    let password = v.get("password").and_then(Value::as_str).unwrap_or("");
+    let mut s = shared.lock().unwrap();
+    let Some(client) = s.clients.get(&client_id) else { return; };
+    if client.room_id.is_some() { send_json_locked(&s, client_id, &json!({"type":"error","message":"Bạn đang ở trong một phòng."})); return; }
+    let username = client.name.clone();
+    let Some(room) = s.rooms.get(&room_id) else { send_json_locked(&s, client_id, &json!({"type":"error","message":"Phòng không còn tồn tại."})); return; };
+    if room.game.as_ref().and_then(|g| g.winner).is_some() { send_json_locked(&s, client_id, &json!({"type":"error","message":"Trận đấu ở phòng này đã kết thúc."})); return; }
+    if room.password != password { send_json_locked(&s, client_id, &json!({"type":"error","message":"Sai mật khẩu phòng."})); return; }
+    let Some(seat) = room.players.iter().position(Option::is_none) else { send_json_locked(&s, client_id, &json!({"type":"error","message":"Phòng đã đủ 2 người."})); return; };
+    let room_name = room.name.clone();
+    let r_id = room.id.clone();
+    let (players_json, game_started, game_state) = {
+        let room = s.rooms.get_mut(&room_id).unwrap();
+        room.players[seat] = Some(client_id);
+        room.names[seat] = Some(username.clone());
+        let names = room.names.clone();
+        if room.players.iter().all(Option::is_some) {
+            room.game = Some(new_game(names, room.colors.clone()));
+        }
+        let playing = room.game.is_some();
+        let game = room.game.clone();
+        (json!([room.names[0], room.names[1]]), playing, game)
+    };
+    if let Some(c) = s.clients.get_mut(&client_id) { c.room_id = Some(r_id.clone()); c.seat = Some(seat); }
+    send_json_locked(&s, client_id, &json!({"type":"joined","roomId":r_id,"roomName":room_name,"seat":seat,"waiting":!game_started,"players":players_json,"game":game_state}));
+    send_room_locked(&s, &r_id, &json!({"type":"room_status","roomName":room_name,"players":players_json,"waiting":!game_started}));
+    if game_started { send_room_locked(&s, &r_id, &json!({"type":"match_found","players":players_json})); if let Some(g) = game_state { send_room_locked(&s, &r_id, &json!({"type":"game_update","game":g})); } }
+    drop(s);
+    send_rooms(shared);
+}
+
+fn leave_room(shared: &Shared, client_id: ClientId) {
+    let mut s = shared.lock().unwrap();
+    let Some(room_id) = s.clients.get(&client_id).and_then(|c| c.room_id.clone()) else {
+        send_json_locked(&s, client_id, &json!({"type":"left_room"}));
+        return;
+    };
+    let ended = s.rooms.get(&room_id).and_then(|r| r.game.as_ref()).and_then(|g| g.winner).is_some();
+    if ended {
+        // Once a finished match is left, close the ephemeral room and send any remaining guest back to the lobby.
+        if let Some(room) = s.rooms.remove(&room_id) {
+            for other_id in room.players.iter().flatten().copied().filter(|id| *id != client_id) {
+                if let Some(other) = s.clients.get_mut(&other_id) { other.room_id = None; other.seat = None; }
+                send_json_locked(&s, other_id, &json!({"type":"room_closed","message":"Phòng đã đóng sau khi trận kết thúc."}));
+            }
+        }
+    } else {
+        remove_from_room_locked(&mut s, client_id, &room_id, true);
+    }
+    if let Some(c) = s.clients.get_mut(&client_id) { c.room_id = None; c.seat = None; }
+    send_json_locked(&s, client_id, &json!({"type":"left_room"}));
+    drop(s);
+    send_rooms(shared);
+}
+
+fn remove_from_room_locked(s: &mut ServerState, client_id: ClientId, room_id: &str, announce: bool) {
+    let mut delete = false;
+    let mut recipients: Vec<ClientId> = Vec::new();
+    let mut final_game: Option<GameState> = None;
+    let mut departed_seat: Option<usize> = None;
+    if let Some(room) = s.rooms.get_mut(room_id) {
+        if let Some(seat) = room.players.iter().position(|p| *p == Some(client_id)) {
+            departed_seat = Some(seat);
+            room.players[seat] = None;
+            room.names[seat] = None;
+            recipients = room.players.iter().flatten().copied().collect();
+            if announce {
+                if let Some(game) = room.game.as_mut() {
+                    if game.winner.is_none() {
+                        game.winner = Some(1 - seat);
+                    }
+                    final_game = Some(game.clone());
+                }
+            }
+        }
+        delete = room.players.iter().all(Option::is_none);
+    }
+    if let Some(seat) = departed_seat {
+        let msg = json!({"type":"opponent_left","seat":seat});
+        for id in &recipients { send_json_locked(s, *id, &msg); }
+    }
+    if let Some(game) = final_game {
+        let msg = json!({"type":"game_update","game":game});
+        for id in &recipients { send_json_locked(s, *id, &msg); }
+    }
+    if delete { s.rooms.remove(room_id); }
+}
+
+fn disconnect_client(shared: &Shared, id: ClientId) {
+    let mut s = shared.lock().unwrap();
+    let rid = s.clients.get(&id).and_then(|c| c.room_id.clone());
+    if let Some(rid) = rid { remove_from_room_locked(&mut s, id, &rid, true); }
+    s.clients.remove(&id);
+    drop(s);
+    send_rooms(shared);
+}
+
+fn new_game(names: [Option<String>; 2], colors: [String; 2]) -> GameState {
+    let p0 = PlayerState { name: names[0].clone().unwrap_or_else(|| "Guest Blue".into()), color: colors[0].clone(), gold: 25.0, castle_hp: CASTLE_HP, buff: "none".into(), buff_until: 0.0, potion_ready_at: 0.0 };
+    let p1 = PlayerState { name: names[1].clone().unwrap_or_else(|| "Guest Red".into()), color: colors[1].clone(), gold: 25.0, castle_hp: CASTLE_HP, buff: "none".into(), buff_until: 0.0, potion_ready_at: 0.0 };
+    GameState { players: [p0, p1], units: Vec::new(), elapsed: 0.0, winner: None, next_unit_id: 1 }
+}
+
+fn unit_price(kind: &str) -> f32 {
+    match kind { "gold_mine" => 0.0, "vanguard" => 5.0, "archer" => 7.0, "shield" => 7.0, "mage" => 11.0, "cavalry" => 10.0, "elephant_lancer" => 12.0, "catapult" => 14.0, "general" => 15.0, "royal" => 0.0, _ => 9999.0 }
+}
+fn base_stats(kind: &str) -> (f32, f32, f32, f32, f32, f32, f32) {
+    // ATK, DEF, SPEED, ATK SPEED, range, base HP, splash radius
+    match kind {
+        "gold_mine" => (0.0, 0.0, 0.0, 0.0, 0.0, 300.0, 0.0),
+        "vanguard" => (4.0, 4.0, 3.0, 5.0, 1.35, 60.0, 0.0),
+        "archer" => (8.0, 2.0, 2.0, 7.0, 13.0, 36.0, 0.0),
+        "shield" => (2.0, 12.0, 2.0, 3.0, 1.5, 112.0, 0.0),
+        "mage" => (7.0, 2.0, 2.0, 5.0, 10.5, 44.0, 2.8),
+        "cavalry" => (8.0, 5.0, 5.0, 5.0, 1.6, 75.0, 0.0),
+        "elephant_lancer" => (9.0, 7.0, 5.0, 6.0, 3.6, 125.0, 0.0),
+        "catapult" => (15.0, 5.0, 1.0, 2.0, 18.0, 92.0, 4.0),
+        "general" => (2.0, 6.0, 0.0, 2.0, 4.1, 260.0, 0.0),
+        "royal" => (5.5, 5.5, 4.5, 6.5, 1.45, 82.0, 0.0),
+        _ => (1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0),
+    }
+}
+fn create_unit(game: &mut GameState, owner: usize, kind: &str, x: f32, z: f32, level: u8) -> Unit {
+    let (_, _, _, _, _, hp, _) = base_stats(kind);
+    let level = level.clamp(1, 5);
+    let max_hp = hp * (1.0 + 0.1 * (level as f32 - 1.0));
+    let id = game.next_unit_id; game.next_unit_id += 1;
+    Unit { id, owner, kind: kind.into(), x, z, hp: max_hp, max_hp, level, command: "attack".into(), dest_x: x, dest_z: z, attack_cd: 0.15, burn_remaining: 0.0, burn_dps: 0.0, burn_tick: 0.5, poison_remaining: 0.0, poison_dps: 0.0, summon_cd: 3.0, charge_cd: 6.0 }
+}
+
+fn place_unit(shared: &Shared, client_id: ClientId, v: &Value) {
+    let kind = v.get("kind").and_then(Value::as_str).unwrap_or("").to_string();
+    let x = v.get("x").and_then(Value::as_f64).unwrap_or(0.0) as f32;
+    let z = v.get("z").and_then(Value::as_f64).unwrap_or(0.0) as f32;
+    let level = v.get("level").and_then(Value::as_u64).unwrap_or(1).clamp(1, 5) as u8;
+    if !["gold_mine","vanguard","archer","shield","mage","cavalry","elephant_lancer","catapult","general"].contains(&kind.as_str()) {
+        send_json(shared, client_id, json!({"type":"error","message":"Loại quân không hợp lệ."})); return;
+    }
+    let mut s = shared.lock().unwrap();
+    let (room_id, seat) = match s.clients.get(&client_id) {
+        Some(c) => match (c.room_id.clone(), c.seat) {
+            (Some(r), Some(seat)) => (r, seat),
+            _ => { send_json_locked(&s, client_id, &json!({"type":"error","message":"Hãy vào một phòng trước."})); return; }
+        },
+        None => return,
+    };
+    let result: Result<GameState, String> = (|| {
+        let room = s.rooms.get_mut(&room_id).ok_or_else(|| "Phòng không còn tồn tại.".to_string())?;
+        let game = room.game.as_mut().ok_or_else(|| "Đang chờ đối thủ vào phòng.".to_string())?;
+        if game.winner.is_some() { return Err("Trận đấu đã kết thúc.".into()); }
+        if x.abs() > MAP_X - 6.0 || z.abs() > MAP_Z - 3.0 || (seat == 0 && x > -3.2) || (seat == 1 && x < 3.2) {
+            return Err("Chỉ được thả quân trong nửa sân của phe mình.".into());
+        }
+        if kind == "gold_mine" && game.units.iter().filter(|u| u.owner == seat && u.kind == "gold_mine").count() >= 5 {
+            return Err("Mỗi phe chỉ được đặt tối đa 5 mỏ vàng.".into());
+        }
+        let effective_level = if kind == "gold_mine" { 1 } else { level };
+        let price = unit_price(&kind) * (1.0 + (effective_level as f32 - 1.0) * 0.22);
+        if game.players[seat].gold + 0.001 < price { return Err(format!("Không đủ vàng. Cần {:.0} vàng.", price)); }
+        game.players[seat].gold -= price;
+        let unit = create_unit(game, seat, &kind, x, z, effective_level);
+        game.units.push(unit);
+        Ok(game.clone())
+    })();
+    match result {
+        Ok(snapshot) => send_room_locked(&s, &room_id, &json!({"type":"game_update","game":snapshot})),
+        Err(message) => send_json_locked(&s, client_id, &json!({"type":"error","message":message})),
+    }
+}
+
+fn command_units(shared: &Shared, client_id: ClientId, v: &Value) {
+    let command = v.get("command").and_then(Value::as_str).unwrap_or("attack");
+    if !["attack","defend","occupy"].contains(&command) { return; }
+    let ids: Vec<u64> = v.get("ids").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_u64).collect()).unwrap_or_default();
+    let x = v.get("x").and_then(Value::as_f64).unwrap_or(0.0) as f32;
+    let z = v.get("z").and_then(Value::as_f64).unwrap_or(0.0) as f32;
+    let mut s = shared.lock().unwrap();
+    let Some(c) = s.clients.get(&client_id) else { return; };
+    let (Some(room_id), Some(seat)) = (c.room_id.clone(), c.seat) else { return; };
+    if command == "occupy" && ((seat == 0 && x > -3.2) || (seat == 1 && x < 3.2)) {
+        send_json_locked(&s, client_id, &json!({"type":"error","message":"Điểm chiếm đóng phải nằm trong phần sân của bạn."})); return;
+    }
+    let Some(room) = s.rooms.get_mut(&room_id) else { return; };
+    let Some(game) = room.game.as_mut() else { return; };
+    for unit in &mut game.units {
+        if unit.owner == seat && ids.contains(&unit.id) && unit.kind != "gold_mine" {
+            unit.command = command.to_string();
+            if command == "occupy" { unit.dest_x = x.clamp(-MAP_X + 4.0, MAP_X - 4.0); unit.dest_z = z.clamp(-MAP_Z + 4.0, MAP_Z - 4.0); }
+        }
+    }
+    let snapshot = game.clone();
+    send_room_locked(&s, &room_id, &json!({"type":"game_update","game":snapshot}));
+}
+
+fn upgrade_unit(shared: &Shared, client_id: ClientId, v: &Value) {
+    let uid = v.get("id").and_then(Value::as_u64).unwrap_or(0);
+    let mut s = shared.lock().unwrap();
+    let (room_id, seat) = match s.clients.get(&client_id) {
+        Some(c) => match (c.room_id.clone(), c.seat) {
+            (Some(r), Some(seat)) => (r, seat),
+            _ => { send_json_locked(&s, client_id, &json!({"type":"error","message":"Hãy vào một phòng trước."})); return; }
+        },
+        None => return,
+    };
+    let result: Result<GameState, String> = (|| {
+        let room = s.rooms.get_mut(&room_id).ok_or_else(|| "Phòng không còn tồn tại.".to_string())?;
+        let game = room.game.as_mut().ok_or_else(|| "Trận chưa bắt đầu.".to_string())?;
+        let index = game.units.iter().position(|u| u.id == uid && u.owner == seat)
+            .ok_or_else(|| "Hãy chọn một quân hoặc công trình của phe mình.".to_string())?;
+        let old_level = game.units[index].level;
+        if old_level >= 5 { return Err("Đã đạt cấp tối đa 5.".into()); }
+        let price = (unit_price(&game.units[index].kind).max(3.0) * (old_level as f32 + 1.0) * 0.7).ceil();
+        if game.players[seat].gold < price { return Err(format!("Nâng cấp cần {:.0} vàng.", price)); }
+        game.players[seat].gold -= price;
+        let unit = &mut game.units[index];
+        let old_max = unit.max_hp;
+        unit.level += 1;
+        let (_, _, _, _, _, base_hp, _) = base_stats(&unit.kind);
+        unit.max_hp = base_hp * (1.0 + 0.1 * (unit.level as f32 - 1.0));
+        unit.hp = (unit.hp + (unit.max_hp - old_max)).min(unit.max_hp);
+        Ok(game.clone())
+    })();
+    match result {
+        Ok(snapshot) => send_room_locked(&s, &room_id, &json!({"type":"game_update","game":snapshot})),
+        Err(message) => send_json_locked(&s, client_id, &json!({"type":"error","message":message})),
+    }
+}
+
+fn roll_potion(shared: &Shared, client_id: ClientId) {
+    let mut s = shared.lock().unwrap();
+    let (room_id, seat) = match s.clients.get(&client_id) {
+        Some(c) => match (c.room_id.clone(), c.seat) {
+            (Some(r), Some(seat)) => (r, seat),
+            _ => { send_json_locked(&s, client_id, &json!({"type":"error","message":"Hãy vào một phòng trước."})); return; }
+        },
+        None => return,
+    };
+    let result: Result<(GameState, String), String> = (|| {
+        let room = s.rooms.get_mut(&room_id).ok_or_else(|| "Phòng không còn tồn tại.".to_string())?;
+        let game = room.game.as_mut().ok_or_else(|| "Trận chưa bắt đầu.".to_string())?;
+        if game.winner.is_some() { return Err("Trận đấu đã kết thúc.".into()); }
+        if game.elapsed + 0.001 < game.players[seat].potion_ready_at {
+            return Err(format!("Lotion đang hồi chiêu: {:.0}s.", (game.players[seat].potion_ready_at - game.elapsed).ceil()));
+        }
+        const POTIONS: [&str; 5] = ["frenzy","agility","haste","heal","poison"];
+        let chosen = POTIONS[rand::thread_rng().gen_range(0..POTIONS.len())].to_string();
+        let now = game.elapsed;
+        game.players[seat].potion_ready_at = now + 15.0;
+        match chosen.as_str() {
+            "frenzy" | "agility" | "haste" | "poison" => { game.players[seat].buff = chosen.clone(); game.players[seat].buff_until = now + 10.0; }
+            "heal" => for u in game.units.iter_mut().filter(|u| u.owner == seat) { u.hp = (u.hp + u.max_hp * 0.25).min(u.max_hp); },
+            _ => {}
+        }
+        Ok((game.clone(), chosen))
+    })();
+    match result {
+        Ok((snapshot, chosen)) => {
+            send_room_locked(&s, &room_id, &json!({"type":"potion_rolled","owner":seat,"potion":chosen}));
+            send_room_locked(&s, &room_id, &json!({"type":"game_update","game":snapshot}));
+        }
+        Err(message) => send_json_locked(&s, client_id, &json!({"type":"error","message":message})),
+    }
+}
+
+fn stats_for(unit: &Unit, game: &GameState) -> (f32, f32, f32, f32, f32, f32) {
+    let (mut atk, mut def, mut speed, mut atk_speed, range, _, splash) = base_stats(&unit.kind);
+    let level_mul = 1.0 + 0.1 * (unit.level as f32 - 1.0);
+    atk *= level_mul; def *= level_mul; speed *= 1.0 + 0.04 * (unit.level as f32 - 1.0); atk_speed *= 1.0 + 0.04 * (unit.level as f32 - 1.0);
+    let p = &game.players[unit.owner];
+    if p.buff_until > game.elapsed {
+        match p.buff.as_str() {
+            "frenzy" => { atk += 2.0; def += 2.0; speed += 2.0; atk_speed += 2.0; }
+            "agility" => speed += 3.0,
+            "haste" => atk_speed += 3.0,
+            _ => {}
+        }
+    }
+    (atk, def, speed, atk_speed, range, splash)
+}
+fn damage_after_defense(atk: f32, defense: f32) -> f32 { (atk - defense * 0.35).max(1.0) }
+fn dist(x1: f32, z1: f32, x2: f32, z2: f32) -> f32 { ((x1-x2).powi(2) + (z1-z2).powi(2)).sqrt() }
+
+async fn tick_loop(shared: Shared) {
+    let mut interval = tokio::time::interval(Duration::from_millis(200));
+    loop {
+        interval.tick().await;
+        let mut s = shared.lock().unwrap();
+        let room_ids: Vec<String> = s.rooms.keys().cloned().collect();
+        for room_id in room_ids {
+            let mut update = None;
+            if let Some(room) = s.rooms.get_mut(&room_id) {
+                if let Some(game) = room.game.as_mut() {
+                    if game.winner.is_none() {
+                        tick_game(game, 0.2);
+                        update = Some(game.clone());
+                    }
+                }
+            }
+            if let Some(game) = update { send_room_locked(&s, &room_id, &json!({"type":"game_update","game":game})); }
+        }
+    }
+}
+
+fn tick_game(game: &mut GameState, dt: f32) {
+    game.elapsed += dt;
+    for p in &mut game.players {
+        if p.buff_until <= game.elapsed { p.buff = "none".into(); }
+    }
+    for owner in 0..2 {
+        let income: f32 = game.units.iter().filter(|u| u.owner == owner && u.kind == "gold_mine").map(|u| u.level as f32).sum();
+        game.players[owner].gold += income * dt;
+    }
+
+    let snapshot = game.units.clone();
+    let original_len = game.units.len();
+    let mut damage_events: Vec<(u64, f32)> = Vec::new();
+    let mut burn_events: Vec<(u64, f32)> = Vec::new();
+    let mut poison_events: Vec<(u64, f32)> = Vec::new();
+    let mut castle_events: Vec<(usize, f32)> = Vec::new();
+    let mut new_units: Vec<Unit> = Vec::new();
+
+    for i in 0..original_len {
+        if game.units[i].hp <= 0.0 || game.units[i].kind == "gold_mine" { continue; }
+        let owner = game.units[i].owner;
+
+        if game.units[i].burn_remaining > 0.0 {
+            game.units[i].burn_remaining = (game.units[i].burn_remaining - dt).max(0.0);
+            game.units[i].burn_tick -= dt;
+            while game.units[i].burn_tick <= 0.0 && game.units[i].burn_remaining > 0.0 {
+                damage_events.push((game.units[i].id, game.units[i].burn_dps * 0.5));
+                game.units[i].burn_tick += 0.5;
+            }
+        }
+        if game.units[i].poison_remaining > 0.0 {
+            damage_events.push((game.units[i].id, game.units[i].poison_dps * dt));
+            game.units[i].poison_remaining = (game.units[i].poison_remaining - dt).max(0.0);
+        }
+
+        game.units[i].attack_cd = (game.units[i].attack_cd - dt).max(0.0);
+        game.units[i].charge_cd = (game.units[i].charge_cd - dt).max(0.0);
+        if game.units[i].kind == "general" { game.units[i].summon_cd -= dt; }
+        if game.units[i].kind == "general" && game.units[i].summon_cd <= 0.0 {
+            game.units[i].summon_cd = 3.0;
+            let summoner = game.units[i].clone();
+            let count = 2 + summoner.level as usize - 1;
+            for k in 0..count {
+                let offset = (k as f32 - (count as f32 - 1.0) / 2.0) * 0.9;
+                let sx = (summoner.x + offset).clamp(-MAP_X + 3.0, MAP_X - 3.0);
+                let sz = (summoner.z + 1.5).clamp(-MAP_Z + 3.0, MAP_Z - 3.0);
+                new_units.push(create_unit(game, owner, "royal", sx, sz, summoner.level));
+            }
+        }
+
+        // Work on a copy so movement/combat can safely queue effects for later application.
+        let cur = game.units[i].clone();
+        let (atk, _def, speed, atk_speed, range, splash) = stats_for(&cur, game);
+        let enemy_target = snapshot.iter().filter(|u| u.owner != owner && u.hp > 0.0)
+            .min_by(|a,b| dist(cur.x,cur.z,a.x,a.z).partial_cmp(&dist(cur.x,cur.z,b.x,b.z)).unwrap_or(std::cmp::Ordering::Equal));
+        let mut target_pos: Option<(f32,f32,u64)> = None;
+        if let Some(t) = enemy_target {
+            match cur.command.as_str() {
+                "defend" if dist(cur.x,cur.z,t.x,t.z) > 10.0 => {},
+                "occupy" if dist(cur.x,cur.z,t.x,t.z) > 11.0 => {},
+                _ => target_pos = Some((t.x,t.z,t.id)),
+            }
+        }
+        if target_pos.is_none() && cur.command == "occupy" { target_pos = Some((cur.dest_x,cur.dest_z,u64::MAX)); }
+        if target_pos.is_none() && cur.command == "defend" {
+            // Pull back toward the friendly keep, then hold the defensive perimeter.
+            let home_x = if owner == 0 { -MAP_X + 12.0 } else { MAP_X - 12.0 };
+            if dist(cur.x,cur.z,home_x,0.0) > 7.0 { target_pos = Some((home_x,0.0,u64::MAX)); }
+        }
+        if target_pos.is_none() && cur.command == "attack" && enemy_target.is_none() {
+            let castle_x = if owner == 0 { MAP_X - 12.0 } else { -MAP_X + 12.0 };
+            target_pos = Some((castle_x,0.0,0));
+        }
+        if target_pos.is_none() { continue; }
+        let (tx,tz,target_id) = target_pos.unwrap();
+        let d = dist(cur.x,cur.z,tx,tz);
+        let mut move_speed = speed;
+        if cur.kind == "cavalry" && game.units[i].charge_cd <= 0.0 && d > 4.0 {
+            move_speed *= 4.0;
+            game.units[i].charge_cd = 6.0;
+            for enemy in snapshot.iter().filter(|u| u.owner != owner && u.hp > 0.0 && point_segment_distance(u.x,u.z,cur.x,cur.z,tx,tz) < 1.7) {
+                damage_events.push((enemy.id, damage_after_defense(atk * 1.5, base_stats(&enemy.kind).1)));
+                if game.players[owner].buff == "poison" && game.players[owner].buff_until > game.elapsed {
+                    poison_events.push((enemy.id, atk));
+                }
+            }
+        }
+        let is_destination = target_id == u64::MAX;
+        let reach = if target_id == 0 { range + 4.0 } else if is_destination { 0.65 } else { range + 0.35 };
+        let in_range = d <= reach;
+        if !in_range && move_speed > 0.0 {
+            let desired_gap = if is_destination { 0.5 } else { range.max(0.4) };
+            let step_base = (move_speed * dt).min((d - desired_gap).max(0.0));
+            let mut next_x = cur.x;
+            let mut next_z = cur.z;
+            if d > 0.001 {
+                next_x += (tx-cur.x)/d * step_base;
+                next_z += (tz-cur.z)/d * step_base;
+            }
+            // Wading through the shallow river slows troops briefly.
+            if (cur.x * next_x <= 0.0 && (cur.x.abs() < 4.0 || next_x.abs() < 4.0)) || next_x.abs() < 2.0 {
+                next_x = cur.x + (next_x-cur.x)*0.55;
+                next_z = cur.z + (next_z-cur.z)*0.55;
+            }
+            game.units[i].x = next_x.clamp(-MAP_X+2.0, MAP_X-2.0);
+            game.units[i].z = next_z.clamp(-MAP_Z+2.0, MAP_Z-2.0);
+        } else if !is_destination && game.units[i].attack_cd <= 0.0 && (target_id != 0 || d < range + 5.0) {
+            game.units[i].attack_cd = (1.6 - atk_speed * 0.18).clamp(0.24, 1.3);
+            if target_id == 0 {
+                let enemy_owner = 1 - owner;
+                castle_events.push((enemy_owner, damage_after_defense(atk, 8.0)));
+            } else if let Some(target) = snapshot.iter().find(|u| u.id == target_id) {
+                if splash > 0.0 {
+                    for enemy in snapshot.iter().filter(|u| u.owner != owner && u.hp > 0.0 && dist(tx,tz,u.x,u.z) <= splash) {
+                        damage_events.push((enemy.id, damage_after_defense(atk, base_stats(&enemy.kind).1)));
+                        if cur.kind == "mage" { burn_events.push((enemy.id, atk)); }
+                        if game.players[owner].buff == "poison" && game.players[owner].buff_until > game.elapsed { poison_events.push((enemy.id, atk)); }
+                    }
+                } else {
+                    damage_events.push((target_id, damage_after_defense(atk, base_stats(&target.kind).1)));
+                    if cur.kind == "mage" { burn_events.push((target_id, atk)); }
+                    if game.players[owner].buff == "poison" && game.players[owner].buff_until > game.elapsed { poison_events.push((target_id, atk)); }
+                }
+            }
+        }
+    }
+
+    for (id, damage) in damage_events {
+        if let Some(u) = game.units.iter_mut().find(|u| u.id == id) { u.hp -= damage; }
+    }
+    for (id, atk) in burn_events { if let Some(u) = game.units.iter_mut().find(|u| u.id == id) { u.burn_remaining = 4.0; u.burn_dps = atk; u.burn_tick = 0.5; } }
+    for (id, atk) in poison_events { if let Some(u) = game.units.iter_mut().find(|u| u.id == id) { u.poison_remaining = 4.0; u.poison_dps = atk * 0.25 / 4.0; } }
+    for (owner, damage) in castle_events { game.players[owner].castle_hp = (game.players[owner].castle_hp - damage).max(0.0); }
+    game.units.extend(new_units);
+    game.units.retain(|u| u.hp > 0.0);
+    if game.players[0].castle_hp <= 0.0 { game.winner = Some(1); }
+    else if game.players[1].castle_hp <= 0.0 { game.winner = Some(0); }
+}
+
+fn point_segment_distance(px:f32,pz:f32,ax:f32,az:f32,bx:f32,bz:f32)->f32 {
+    let dx=bx-ax; let dz=bz-az; let denom=dx*dx+dz*dz;
+    if denom < 0.0001 { return dist(px,pz,ax,az); }
+    let t=(((px-ax)*dx+(pz-az)*dz)/denom).clamp(0.0,1.0);
+    dist(px,pz,ax+t*dx,az+t*dz)
 }

@@ -1,61 +1,44 @@
 # Emperor's Great Battle
 
-Bản MVP game chiến thuật 1v1 chạy trên web. Rust/Axum quản lý phòng, WebSocket và mô phỏng trận đấu; trình duyệt dựng chiến trường cartoon 3D bằng Three.js với camera orthographic cố định.
+A compact, browser-based 1v1 medieval battlefield prototype. The web server and authoritative game simulation are written in Rust (Axum + Tokio); Three.js renders a fixed medieval battlefield with a cinematic, tilted perspective camera.
 
-## Tính năng có trong bản này
+## What's included
 
-- Tên khách lưu cục bộ trong trình duyệt; không có đăng ký, đăng nhập, database tài khoản hay hồ sơ người chơi.
-- Sảnh tìm kiếm danh sách phòng, tạo phòng, phòng có mật khẩu, kiểm tra trùng tên phòng.
-- Trận 1v1 qua WebSocket; máy chủ giữ vàng, quân, HP, công trình, cứ điểm, lệnh và buff.
-- Hai phe xanh/đỏ, màu được chọn ngẫu nhiên cho người mở phòng và người vào sau.
-- Lâu đài hai bên, đồng cỏ top-down, sông nông có thể băng qua, hai cứ điểm chiếm đóng, giới hạn bản đồ/camera.
-- Triển khai lính tiên phong, cung thủ, lính khiên, pháp sư, kỵ binh, kỵ tượng giáo, máy bắn đá, đại tướng quân và tối đa 5 mỏ vàng mỗi người.
-- Cấp quân 1–5, nâng cấp mỏ, bốn lệnh điều quân, năm buff có tỷ lệ ngang nhau, sát thương lan/thiêu đốt/độc, tướng triệu hồi lính hoàng gia.
-- Giao diện co giãn cho màn hình máy tính và điện thoại.
+- Guest-only play: enter a display name, no sign-up, account table, or player database.
+- Ephemeral rooms for two players, optional room password, case-insensitive duplicate room-name detection, lobby search, and WebSocket room updates.
+- A bounded 120 × 80 playable meadow arena with a shallow central river, wooden fords, and two keeps with ramparts; the surrounding visual meadow extends beyond the play area so hard map edges do not intrude into the camera view.
+- Toon-shaded cartoon soldiers with articulated arms and legs, visible faces, helmets, armor, heraldic capes, role-specific weapons, horses, an elephant howdah, catapult, general, and gold mines. Walking units animate their limbs.
+- Server-side gold economy, unit placement restrictions, HP/damage/defense, nearest-enemy targeting, unit levels 1–5, upgrades, area damage, burn/poison effects, cavalry charge, general summoning, potion cooldowns, and 5,000-HP castles.
+- Automatic cinematic camera using a Three.js perspective view (tilted like the supplied Tower Battles reference), smoothly panning between your side and the distant enemy side every ~10 seconds. The in-game camera button can pause/resume this automatic sweep. Camera focus stays within the arena, and the view remains fixed to prevent unrestricted scrolling.
+- Render Blueprint at `render.yaml`.
 
-## Chạy máy cục bộ
+## Run locally
 
-Cần cài Rust toolchain (stable) và Cargo.
+Install a recent stable Rust toolchain, then run from this directory:
 
 ```bash
 cargo run
 ```
 
-Mở <http://localhost:10000>. Để thử 1v1, mở hai cửa sổ trình duyệt hoặc một cửa sổ ẩn danh. Cổng mặc định là `10000`; máy chủ cũng đọc biến môi trường `PORT`.
+Open `http://localhost:10000`. The server reads the `PORT` environment variable and defaults to port `10000`.
 
-## Sửa lỗi Cargo edition 2024 trên Render
+The browser loads Three.js and the optional display fonts from public CDNs, so a network connection is needed for those assets.
 
-Ảnh build báo Cargo 1.84.1 chưa hỗ trợ ổn định `edition = "2024"`. Dockerfile dùng image builder `rust:1.85-slim` trở lên; Rust/Cargo 1.85 là bản ổn định đầu tiên hỗ trợ Rust 2024 Edition. Nếu repository GitHub đã có Dockerfile cũ, hãy cập nhật dòng `FROM rust:1.84-slim AS builder` thành `FROM rust:1.85-slim AS builder`, commit/push thay đổi rồi deploy lại.
+## Deploy to Render
 
-## Triển khai trên Render
+1. Create a Git repository and upload the contents of this folder (the files inside the folder, not the ZIP itself).
+2. In Render, choose **New → Blueprint** for the repository, or create a **Web Service** and select the Rust runtime.
+3. With the Blueprint, Render reads `render.yaml`. If configuring manually, use:
+   - Build command: `cargo build --release`
+   - Start command: `./target/release/emperors-great-battle`
+   - Health check path: `/`
+4. Deploy the service and open the `onrender.com` URL. The app serves its page and its `/ws` WebSocket endpoint from the same service; Render's public WebSockets use `wss://` automatically on HTTPS pages.
 
-1. Đưa thư mục này lên một repository GitHub của bạn.
-2. Trong Render, chọn **New + → Blueprint** và kết nối repository; Render đọc cấu hình `render.yaml`. Hoặc tạo Web Service với runtime Docker.
-3. Đảm bảo health-check path là `/healthz`, sau đó triển khai. WebSocket dùng cùng host (`wss://...`) khi trang được phục vụ qua HTTPS.
-4. Mở URL Render được cấp và thử bằng hai trình duyệt/thiết bị khác nhau.
+Official Render references: [Rust/native runtimes](https://render.com/docs/native-runtimes), [Web Services](https://render.com/docs/web-services), [WebSockets](https://render.com/docs/websocket).
 
-Mình không thể tạo service bên trong tài khoản Render của bạn khi chưa có quyền truy cập, nhưng repository này có Dockerfile và blueprint để Render build trực tiếp.
+## Important prototype limitations
 
-## Lưu ý triển khai / giới hạn MVP
-
-- Trạng thái phòng và trận đấu được giữ trong bộ nhớ của tiến trình; khởi động lại hoặc deploy lại sẽ xóa các phòng. Không có tài khoản nào được lưu.
-- Three.js được tải từ jsDelivr CDN, vì vậy trình duyệt người chơi cần truy cập CDN.
-- Đây là MVP có gameplay online và AI mô phỏng đơn giản, chưa phải bản thương mại đã được stress-test. Cân bằng chỉ số/định tuyến mục tiêu và tối ưu nhiều phòng nên được kiểm thử thêm trước khi mở public rộng rãi.
-- Bản đồ/đơn vị là mô hình low-poly 3D được tạo bằng hình học trong mã nguồn, không có asset bản quyền bên ngoài.
-
-## Chỉ số quân mặc định (cấp 1)
-
-| Quân | Giá | HP | ATK | DEF | SPEED | ATK SPEED | Tầm/đặc tính |
-|---|---:|---:|---:|---:|---:|---:|---|
-| Lính tiên phong | 5 | 54 | 4 | 4 | 3 | 5 | Cận chiến |
-| Cung thủ | 7 | 34 | 8 | 2 | 2 | 7 | Tầm xa 105 |
-| Lính khiên | 7 | 112 | 2 | 12 | 2 | 3 | Cận chiến, chống chịu |
-| Pháp sư | 11 | 42 | 7 | 2 | 2 | 5 | AOE 20, thiêu đốt 4 giây |
-| Kỵ binh | 10 | 70 | 8 | 5 | 5 | 5 | Lao thẳng, đánh quân trên đường lao |
-| Kỵ tượng giáo | 12 | 98 | 9 | 7 | 5 | 6 | Tầm đánh 23 |
-| Máy bắn đá | 14 | 60 | 15 | 5 | 1 | 2 | Tầm xa 145, AOE 26 |
-| Đại tướng quân | 15 | 205 | 2 | 6 | 0 | 2 | Mỗi 3 giây gọi 2 lính hoàng gia |
-| Lính hoàng gia | — | 69 | 5.5 | 5.5 | 4.5 | 6.5 | Chỉ do đại tướng quân triệu hồi |
-| Mỏ vàng | 0 | 125 | — | — | — | — | +1 vàng/giây mỗi cấp, tối đa 5 mỏ và cấp 5 |
-
-DEF giảm sát thương nhận vào; sát thương cơ bản tính bằng `max(ATK - 0.35 × DEF, 0.25 × ATK)`. ATK SPEED cao làm giảm thời gian giữa các đòn đánh (xấp xỉ `5 / ATK SPEED` giây). Cấp quân 2–5 tăng ATK/DEF/SPEED/ATK SPEED mỗi cấp 13%, HP mỗi cấp 18%; giá triển khai tăng 18% mỗi cấp. Mỏ mới luôn ở cấp 1 và cần dùng nút nâng mỏ để lên cấp.
+- **Rooms and matches are in RAM only.** No guest account, room, or match record is saved. Restarting/redeploying the service clears all active rooms and matches.
+- This is a playable prototype, not a production-hardened competitive game. It has no anti-cheat/rate-limit system, reconnect-to-match flow, persistent matchmaking, database, or cross-instance room broker. Run a single service instance for room consistency.
+- Balancing values for unit HP and potion duration are implementation choices because the initial brief specified HP as designable and did not specify potion durations. The requested ATK/DEF/SPEED/ATK SPEED values are used for the named troop types; levels scale stats and HP.
+- A real compile/deploy should still be run in a Rust environment. The authoring environment used to prepare this archive did not include `rustc` or `cargo`, so Rust compilation could not be verified here. The JavaScript module syntax was checked with Node.js.

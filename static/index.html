@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141e21"><title>Emperor's Great Battle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
+<style>
+:root{--bg:#11191b;--panel:#1b2729;--panel2:#233234;--line:#3b4b48;--gold:#d6b66d;--gold2:#f2dda1;--text:#f3ecd9;--muted:#b6c0b4;--green:#537a56;--red:#cb5d53;--blue:#619cde;--shadow:0 16px 40px #08101299}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at top,#2d4037 0,#182523 38%,#101719 80%);color:var(--text);font-family:Manrope,system-ui,sans-serif}button,input{font:inherit}button{cursor:pointer;color:inherit;border:1px solid #54645a;background:linear-gradient(#354842,#263631);border-radius:8px;padding:10px 14px;font-weight:800;letter-spacing:.02em;transition:transform .12s,border-color .12s,filter .12s}button:hover{filter:brightness(1.15);border-color:var(--gold)}button:active{transform:translateY(1px)}button:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.5)}input{width:100%;color:var(--text);background:#101a1b;border:1px solid #475650;border-radius:8px;padding:12px 13px;outline:none}input:focus{border-color:var(--gold);box-shadow:0 0 0 2px #d6b66d28}label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:#b4c1b5;font-weight:800;margin:0 0 7px}.serif{font-family:Cinzel,Georgia,serif;letter-spacing:.025em}.hidden{display:none!important}.muted{color:var(--muted)}.eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-weight:800}.gold{color:var(--gold2)}.small{font-size:12px}.screen{min-height:100vh}.topbar{height:68px;padding:0 clamp(16px,3vw,38px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #d2c69c1b;background:#0e1718ce;backdrop-filter:blur(12px);position:relative;z-index:4}.brand{display:flex;align-items:center;gap:12px}.crest{width:38px;height:43px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 15%,91% 68%,50% 100%,9% 68%,0 15%);background:linear-gradient(135deg,#f0d99a,#806331);color:#1a2721;font-size:22px;font-weight:900}.brand-name{font:700 15px Cinzel,serif;line-height:1.25}.brand-sub{font-size:9px;color:#a9b7a9;letter-spacing:.18em;text-transform:uppercase;margin-top:3px}.top-right{display:flex;align-items:center;gap:10px}.connection{display:flex;align-items:center;gap:7px;color:#a6b6a9;font-size:11px}.dot{width:7px;height:7px;border-radius:50%;background:#c95c50;box-shadow:0 0 10px #c95c5066}.dot.online{background:#72ca8a;box-shadow:0 0 10px #72ca8a77}.guest-chip{border:1px solid #465650;border-radius:20px;padding:7px 12px;font-size:11px;color:#e8dfc9}.primary{background:linear-gradient(#e4c985,#b78b44);border-color:#f0d79b;color:#1a251f}.ghost{background:#172323}.danger{background:linear-gradient(#773b35,#4b2927);border-color:#975249}.small-btn{padding:7px 10px;font-size:11px}.shell{width:min(1200px,calc(100% - 32px));margin:0 auto;padding:40px 0 50px}.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center;margin-bottom:28px}.hero-title{font:800 clamp(30px,4vw,50px)/1.05 Cinzel,Georgia,serif;margin:10px 0 14px;max-width:660px}.hero-title span{color:var(--gold2)}.hero-copy{max-width:620px;line-height:1.75;color:#bdc7b8;font-size:13px}.hero-art{height:190px;border:1px solid #b29b5c3a;border-radius:14px;overflow:hidden;position:relative;background:linear-gradient(180deg,#1f392f,#3b513b 58%,#766849);box-shadow:var(--shadow)}.hero-art:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 70% 20%,#e8cf8a33,transparent 38%),linear-gradient(135deg,transparent 38%,#0c171799)}.hill{position:absolute;bottom:-40px;width:330px;height:170px;border-radius:50%;background:#536d4b;filter:blur(1px)}.hill.a{left:-75px}.hill.b{right:-70px;bottom:-60px;background:#334c3f}.mini-castle{position:absolute;bottom:27px;left:48%;transform:translateX(-50%);width:90px;height:70px;background:#b5a17c;border:4px solid #6d634f;border-bottom-width:7px;box-shadow:0 10px 10px #1118}.mini-castle:before{content:"";position:absolute;top:-29px;left:8px;width:19px;height:38px;background:#cabc96;border:3px solid #6d634f;box-shadow:51px 0 #cabc96,51px 0 0 3px #6d634f}.mini-castle:after{content:"";position:absolute;bottom:0;left:35px;width:20px;height:34px;border-radius:10px 10px 0 0;background:#493a2c}.art-river{position:absolute;left:0;right:0;bottom:0;height:20px;background:#729d9b;opacity:.8;transform:rotate(-4deg) scale(1.15)}.art-label{position:absolute;left:18px;bottom:14px;font:700 10px Cinzel,serif;letter-spacing:.13em;color:#f3e4b7}.panel{background:linear-gradient(155deg,#243331f5,#172222f7);border:1px solid #68776755;border-radius:13px;box-shadow:var(--shadow)}.lobby-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,.8fr);gap:20px}.panel-head{padding:18px 20px;border-bottom:1px solid #80908024;display:flex;align-items:center;justify-content:space-between;gap:14px}.panel-head h2{font:700 16px Cinzel,serif;margin:5px 0 0}.panel-body{padding:20px}.section-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#e0cf9f;font-weight:800;margin:0 0 14px}.room-search{position:relative;margin-bottom:16px}.room-search input{padding-left:38px}.search-icon{position:absolute;left:13px;top:11px;color:#92a396}.room-table-head,.room-row{display:grid;grid-template-columns:minmax(0,1fr) 85px 95px;gap:10px;align-items:center}.room-table-head{padding:9px 12px;color:#85968a;font-size:9px;letter-spacing:.15em;text-transform:uppercase;border-bottom:1px solid #d1dfd31b}.room-row{padding:12px;border-bottom:1px solid #d1dfd314;font-size:12px}.room-row:last-child{border-bottom:0}.room-name{font-weight:800;display:flex;align-items:center;gap:8px}.lock{color:#d7bf7b;font-size:12px}.room-meta{font-size:10px;color:#94a69b;margin-top:4px}.room-count{color:#d4d9c9;font-variant-numeric:tabular-nums}.room-row button{padding:7px 10px;font-size:10px}.empty-state{text-align:center;color:#94a69b;padding:37px 15px;font-size:12px;line-height:1.7}.empty-emblem{font-size:30px;color:#a7a079;margin-bottom:10px}.field{margin-bottom:14px}.field-save{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.field-save button{white-space:nowrap;padding:10px 11px;font-size:10px}.form-actions{display:flex;gap:8px;margin-top:18px}.form-actions button{flex:1}.divider-label{display:flex;align-items:center;gap:10px;color:#76867b;font-size:9px;letter-spacing:.15em;text-transform:uppercase;margin:18px 0}.divider-label:before,.divider-label:after{content:"";height:1px;background:#6070604a;flex:1}.info-strip{display:flex;gap:10px;align-items:start;padding:12px 13px;border-radius:8px;background:#d0be7a0d;border:1px solid #d4bd6e24;color:#abb9ac;font-size:10px;line-height:1.65;margin-top:16px}.info-strip b{color:#e5d19c}.name-wrap{min-height:calc(100vh - 68px);display:grid;place-items:center;padding:32px 16px}.name-card{max-width:500px;width:100%;padding:34px;background:linear-gradient(145deg,#263833,#152222);border:1px solid #9d8b554f;border-radius:15px;box-shadow:0 24px 65px #0005;position:relative;overflow:hidden}.name-card:after{content:"⚔";position:absolute;right:-7px;bottom:-37px;color:#d7c2800b;font-size:190px;pointer-events:none}.name-crest{width:76px;height:84px;margin:0 auto 20px;display:grid;place-items:center;background:linear-gradient(150deg,#ecd69c,#9b773b);clip-path:polygon(50% 0,100% 15%,90% 70%,50% 100%,10% 70%,0 15%);color:#203029;font-size:36px}.name-card h1{text-align:center;font:800 28px/1.2 Cinzel,serif;margin:0}.name-card h1 span{color:var(--gold2)}.name-card .sub{text-align:center;color:#b1bfb1;font-size:12px;line-height:1.75;margin:14px 0 25px}.name-card .primary{width:100%;margin-top:7px}.privacy{text-align:center;font-size:10px;color:#819387;margin-top:15px}.error-line{color:#f0a39a;font-size:11px;line-height:1.5;margin-top:9px;min-height:15px}.waiting-shell{max-width:780px;margin:65px auto;padding:0 16px}.waiting-card{padding:30px;text-align:center}.waiting-card h1{font:800 28px Cinzel,serif;margin:9px 0 7px}.versus-row{display:grid;grid-template-columns:1fr 70px 1fr;align-items:center;margin:30px auto;gap:12px;max-width:550px}.player-slot{padding:20px 8px;background:#111b1bcc;border:1px solid #81947a33;border-radius:10px}.player-slot .slot-icon{font-size:27px;margin-bottom:8px}.player-slot .slot-name{font-size:13px;font-weight:800}.versus{font:800 22px Cinzel,serif;color:var(--gold)}.pulse{width:8px;height:8px;border-radius:50%;background:#d6b66d;display:inline-block;margin-right:5px;animation:pulse 1.3s infinite}@keyframes pulse{50%{opacity:.25;box-shadow:0 0 0 8px #d6b66d0a}}.wait-note{font-size:12px;color:#a7b5a8;line-height:1.7}.battle-screen{height:100vh;min-height:650px;overflow:hidden;display:flex;flex-direction:column;background:#101719}.battle-top{height:64px;flex-shrink:0;padding:0 16px;display:flex;align-items:center;gap:16px;border-bottom:1px solid #73816b40;background:#101a1b;z-index:3}.battle-brand{min-width:200px;display:flex;align-items:center;gap:10px}.battle-brand .crest{width:30px;height:35px;font-size:16px}.battle-brand .brand-name{font-size:12px}.match-mark{font-size:9px;color:#9aa99b;letter-spacing:.15em;text-transform:uppercase;border-left:1px solid #3c4e46;padding-left:16px}.scorebars{display:flex;align-items:center;justify-content:center;gap:14px;flex:1;min-width:0}.score-side{display:flex;align-items:center;gap:8px;min-width:0;flex:1;max-width:270px}.score-side.enemy{flex-direction:row-reverse;text-align:right}.side-name{font-size:10px;font-weight:800;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.team-dot{width:9px;height:9px;border-radius:3px;background:var(--team);flex-shrink:0}.hpbar{height:7px;background:#452e2b;border:1px solid #6b4942;border-radius:8px;overflow:hidden;flex:1;min-width:28px}.hpfill{height:100%;width:100%;background:linear-gradient(90deg,#bd594c,#ed8a66);transition:width .2s}.player .hpfill{background:linear-gradient(90deg,#4d9c70,#a6d882)}.score-num{font-size:10px;color:#bbc8ba;white-space:nowrap;font-variant-numeric:tabular-nums}.match-vs{font:700 11px Cinzel,serif;color:#d0b86f}.battle-time{font:700 12px Cinzel,serif;color:#ddcf9f;min-width:55px;text-align:center}.exit-button{padding:8px 10px;font-size:10px}.battle-layout{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 245px;min-height:0}.world-area{position:relative;min-width:0;min-height:0;overflow:hidden;background:#374c35}.world-area canvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;cursor:crosshair}.world-vignette{pointer-events:none;position:absolute;inset:0;box-shadow:inset 0 0 55px #0d1b1780}.map-label{position:absolute;top:12px;left:13px;border-radius:7px;padding:8px 11px;background:#13201bbd;border:1px solid #d2c89a28;color:#b9c8b8;font-size:9px;letter-spacing:.1em;text-transform:uppercase;pointer-events:none}.map-hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;border:1px solid #d7ceaa33;border-radius:20px;background:#14211dcc;color:#d1d7c8;padding:8px 13px;font-size:10px;white-space:nowrap;pointer-events:none;max-width:calc(100% - 20px);overflow:hidden;text-overflow:ellipsis}.world-corner{position:absolute;right:12px;top:12px;background:#12201ccc;border:1px solid #ccd0a633;border-radius:8px;padding:8px 10px;font-size:10px;color:#ddd4b2;pointer-events:none}.side-panel{background:linear-gradient(#1c2928,#152020);border-left:1px solid #4a5b4b;overflow:auto;display:flex;flex-direction:column}.side-section{padding:14px;border-bottom:1px solid #a6b7a21a}.side-title{font-size:9px;text-transform:uppercase;letter-spacing:.17em;color:#c8b782;font-weight:800;margin-bottom:11px;display:flex;justify-content:space-between;gap:7px}.economy-line{display:flex;align-items:center;justify-content:space-between;gap:12px}.gold-count{font:800 25px Cinzel,serif;color:#f1d68a;letter-spacing:.02em}.gold-per-sec{font-size:10px;color:#aebca7}.mine-count{font-size:10px;color:#c4c9b8}.unit-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.unit-card{position:relative;text-align:left;padding:9px 8px 8px;min-width:0;min-height:83px;border:1px solid #516356;background:linear-gradient(#2d4036,#1e2c28);border-radius:8px}.unit-card.active{border-color:#e1c476;background:linear-gradient(#45523b,#26392d);box-shadow:inset 0 0 0 1px #f2d89135,0 0 0 1px #d1b46722}.unit-emoji{font-size:19px;display:block;margin-bottom:4px;filter:drop-shadow(0 2px 2px #0005)}.unit-title{display:block;font-size:10px;line-height:1.25;font-weight:800;min-height:24px}.unit-cost{font-size:9px;color:#e7cd7c;margin-top:4px}.unit-stat-mini{font-size:8px;color:#9dad9b;margin-top:3px;white-space:nowrap}.level-row{display:flex;gap:4px}.level-button{flex:1;padding:7px 0;font-size:10px;border-radius:5px}.level-button.active{background:#d7bf83;color:#1a261f;border-color:#f5df9f}.command-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.command-button{padding:10px 5px;font-size:10px;line-height:1.4}.command-button.selected{border-color:#e0c778;background:linear-gradient(#665638,#403721)}.command-button span{display:block;font-size:17px;margin-bottom:3px}.command-button.wide{grid-column:span 2}.selection-note{font-size:10px;line-height:1.5;color:#9faf9f;margin-top:9px;min-height:15px}.upgrade-button{width:100%;margin-top:10px;background:linear-gradient(#71613d,#403923);border-color:#b6a05e;color:#f4dda0;font-size:10px}.potion-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:linear-gradient(#514264,#302a41);border-color:#796393;padding:10px;font-size:10px}.potion-button .potion-icon{font-size:20px}.potion-button .cooldown{font-size:9px;color:#d8c8ee;font-variant-numeric:tabular-nums}.effect-list{font-size:10px;color:#a7b7a8;line-height:1.7}.effect-list b{color:#e5d5a5}.battle-bottom{height:53px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 15px;gap:12px;background:#111a1b;border-top:1px solid #54645355;font-size:10px;color:#a3b3a4}.bottom-left,.bottom-right{display:flex;align-items:center;gap:12px}.team-badge{display:flex;align-items:center;gap:7px}.team-swatch{width:8px;height:8px;border-radius:50%;background:var(--team)}.toast{position:fixed;left:50%;top:82px;transform:translate(-50%,-8px);opacity:0;pointer-events:none;z-index:20;padding:11px 16px;border:1px solid #c6ad64;border-radius:8px;color:#f5e8bc;background:#15211feF;box-shadow:var(--shadow);font-size:12px;font-weight:800;transition:opacity .2s,transform .2s;max-width:min(90vw,460px);text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}.result-overlay{position:absolute;inset:0;z-index:5;background:#09110ed9;display:grid;place-items:center;backdrop-filter:blur(3px)}.result-card{width:min(420px,90%);padding:30px;text-align:center;border:1px solid #c5a85d;background:linear-gradient(145deg,#273b31,#182422);border-radius:14px;box-shadow:var(--shadow)}.result-card h2{font:800 26px Cinzel,serif;margin:8px 0}.result-card p{color:#b8c5b7;font-size:12px;line-height:1.65}.result-actions{display:flex;gap:9px;justify-content:center;margin-top:20px}.result-actions button{min-width:120px}.help-text{font-size:10px;color:#8fa193;line-height:1.65;margin-top:12px}.rules-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.rule-mini{border:1px solid #c2cfb21a;border-radius:8px;padding:12px;background:#0e1a182e}.rule-mini b{font-size:11px;display:block;color:#e3d19c;margin-bottom:5px}.rule-mini span{font-size:10px;color:#a7b5a6;line-height:1.55;display:block}
+@media(max-width:900px){.hero{grid-template-columns:1fr}.hero-art{display:none}.lobby-grid{grid-template-columns:1fr}.battle-layout{grid-template-columns:minmax(0,1fr) 225px}.battle-brand{min-width:unset}.match-mark{display:none}.side-name{max-width:66px}.scorebars{gap:8px}.battle-top{gap:9px;padding:0 10px}}
+@media(max-width:650px){.topbar{height:58px;padding:0 12px}.brand-name{font-size:12px}.brand-sub{display:none}.connection{font-size:0}.guest-chip{display:none}.shell{width:calc(100% - 20px);padding-top:25px}.hero-title{font-size:34px}.panel-body{padding:14px}.panel-head{padding:14px}.room-table-head,.room-row{grid-template-columns:minmax(0,1fr) 57px 70px;gap:6px}.room-row{padding:10px 5px}.room-row button{font-size:9px;padding:7px}.room-name{font-size:11px}.room-meta{font-size:9px}.rules-grid{grid-template-columns:1fr}.battle-screen{height:100dvh;min-height:0}.battle-top{height:56px;gap:6px}.battle-brand .brand-name{font-size:9px}.battle-brand .crest{width:24px;height:29px;font-size:12px}.battle-brand{gap:6px}.scorebars{gap:5px}.side-name{font-size:8px;max-width:42px}.score-num{font-size:8px}.hpbar{height:5px}.match-vs{font-size:9px}.battle-time{min-width:36px;font-size:10px}.exit-button{padding:6px 7px;font-size:9px}.battle-layout{display:flex;flex-direction:column;position:relative}.world-area{flex:1;min-height:250px}.side-panel{height:190px;flex-shrink:0;border-left:0;border-top:1px solid #526150;display:grid;grid-template-columns:1.15fr 1fr;grid-template-rows:auto auto;overflow:auto}.side-section{padding:8px;border-bottom:1px solid #a6b7a21a}.side-section.units-section{grid-row:span 2}.side-section.economy-section{grid-column:2}.side-section.commands-section{grid-column:2}.side-title{font-size:8px;margin-bottom:6px}.gold-count{font-size:18px}.gold-per-sec,.mine-count{font-size:8px}.unit-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.unit-card{padding:5px 5px 4px;min-height:59px}.unit-emoji{font-size:14px;margin-bottom:2px}.unit-title{font-size:8px;min-height:18px}.unit-cost,.unit-stat-mini{font-size:7px;margin-top:2px}.level-row{gap:3px}.level-button{padding:4px 0;font-size:8px}.command-grid{gap:4px}.command-button{padding:5px 3px;font-size:8px}.command-button span{font-size:12px;margin-bottom:1px}.command-button.wide{grid-column:span 2}.selection-note{font-size:8px;margin-top:4px}.upgrade-button{padding:6px 4px;font-size:8px;margin-top:5px}.potion-button{padding:6px;font-size:8px}.potion-button .potion-icon{font-size:15px}.potion-button .cooldown{font-size:7px}.battle-bottom{height:34px;padding:0 9px;font-size:8px}.bottom-left,.bottom-right{gap:7px}.map-label{top:7px;left:7px;font-size:7px;padding:6px}.world-corner{top:7px;right:7px;font-size:8px;padding:5px 6px}.map-hint{bottom:6px;font-size:8px;padding:6px 9px}.waiting-shell{margin:35px auto}.waiting-card{padding:20px}.waiting-card h1{font-size:22px}.versus-row{grid-template-columns:1fr 35px 1fr;gap:6px}.player-slot{padding:14px 5px}.player-slot .slot-name{font-size:10px}.player-slot .slot-icon{font-size:21px}}
+.camera-hud{position:absolute;top:42px;right:12px;z-index:7;display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #d8c78c55;border-radius:10px;background:linear-gradient(135deg,#14221de8,#25372be0);backdrop-filter:blur(8px);box-shadow:0 8px 22px #07110c55;pointer-events:auto}.camera-hud-label{font:800 9px Cinzel,serif;letter-spacing:.09em;color:#e6d39b;white-space:nowrap}.camera-hud button{padding:6px 8px;font-size:9px;border-radius:6px;white-space:nowrap}.camera-hud button.active{background:linear-gradient(#e4c985,#b78b44);border-color:#f0d79b;color:#1a251f}@media(max-width:700px){.camera-hud{top:34px;right:6px;gap:4px;padding:4px 5px}.camera-hud-label{font-size:7px;max-width:120px;overflow:hidden;text-overflow:ellipsis}.camera-hud button{font-size:7px;padding:5px 6px}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header class="topbar">
+  <div class="brand"><div class="crest">✦</div><div><div class="brand-name">EMPEROR'S GREAT BATTLE</div><div class="brand-sub">Real-time medieval arena</div></div></div>
+  <div class="top-right"><div class="connection"><i class="dot" id="connectionDot"></i><span id="connectionText">Đang kết nối</span></div><span class="guest-chip" id="guestChip">Khách vô danh</span></div>
+</header>
+
+<section class="screen" id="nameScreen">
+ <div class="name-wrap"><div class="name-card">
+  <div class="name-crest">⚔</div><div class="eyebrow" style="text-align:center">Một trận chiến · Hai đế chế</div>
+  <h1 class="serif">EMPEROR'S<br><span>GREAT BATTLE</span></h1>
+  <p class="sub">Triệu tập đạo quân của bạn. Giành quyền kiểm soát đồng cỏ. Phá hủy lâu đài đối thủ để trở thành hoàng đế cuối cùng.</p>
+  <div class="field"><label for="guestName">Tên chiến binh</label><input id="guestName" maxlength="20" placeholder="Ví dụ: Lionheart" autocomplete="nickname"></div>
+  <button class="primary" id="saveNameBtn">Lưu tên &amp; vào đại sảnh　→</button><div class="error-line" id="nameError"></div>
+  <div class="privacy">♙　Chơi với tư cách khách · Không tạo tài khoản · Không lưu hồ sơ</div>
+ </div></div>
+</section>
+
+<section class="screen hidden" id="lobbyScreen">
+ <main class="shell">
+  <div class="hero"><div><div class="eyebrow">Đại sảnh chiến trận · Mùa cỏ xanh</div><h1 class="hero-title">Gọi quân, dựng cờ.<br><span>Đoạt lấy ngai vàng.</span></h1><p class="hero-copy">Hai lãnh chúa. Hai lâu đài. Một dòng sông nông chia đôi chiến địa. Lập phòng riêng cùng mật khẩu hoặc bước vào một trận đấu đang chờ đối thủ.</p></div><div class="hero-art"><div class="hill a"></div><div class="hill b"></div><div class="mini-castle"></div><div class="art-river"></div><div class="art-label">THE GREEN MARCHES · 1V1</div></div></div>
+  <div class="lobby-grid">
+   <section class="panel"><div class="panel-head"><div><div class="eyebrow">Tìm đối thủ</div><h2>Phòng đang mở</h2></div><button class="ghost small-btn" id="refreshRooms">↻ Làm mới</button></div><div class="panel-body"><div class="room-search"><span class="search-icon">⌕</span><input id="roomSearch" placeholder="Tìm theo tên phòng…" autocomplete="off"></div><div class="room-table-head"><span>Tên phòng</span><span>Chiến binh</span><span style="text-align:right">Tham gia</span></div><div id="roomList"><div class="empty-state"><div class="empty-emblem">⚔</div>Đang dò tín hiệu chiến trận…</div></div><div class="info-strip"><span>✦</span><div><b>Phòng vắng sẽ biến mất</b><br>Danh sách phòng và trận đấu chỉ tồn tại khi máy chủ đang chạy. Tài khoản khách không cần đăng ký.</div></div></div></section>
+   <section class="panel"><div class="panel-head"><div><div class="eyebrow">Lập chiến địa</div><h2>Tạo phòng mới</h2></div><span style="font-size:25px;color:#d8c181">♜</span></div><div class="panel-body"><div class="field"><label for="roomName">Tên phòng</label><div class="field-save"><input id="roomName" maxlength="32" placeholder="VD: Vương quốc phương Bắc"><button class="ghost" type="button" id="saveRoomNameBtn">Lưu tên</button></div></div><div class="field"><label for="roomPassword">Mật khẩu phòng <span style="color:#718578;font-weight:500">· không bắt buộc</span></label><div class="field-save"><input id="roomPassword" type="password" maxlength="48" placeholder="Để trống nếu muốn mở cửa"><button class="ghost" type="button" id="saveRoomPasswordBtn">Lưu mật khẩu</button></div></div><button class="primary" id="createRoomBtn" style="width:100%">✦　Tạo phòng &amp; chờ đối thủ</button><div class="error-line" id="createError"></div><div class="divider-label">Luật chiến địa</div><div class="rules-grid"><div class="rule-mini"><b>01 · Kinh tế</b><span>Mỏ vàng miễn phí, tối đa 5 mỏ. Nâng cấp để tăng thu nhập.</span></div><div class="rule-mini"><b>02 · Điều quân</b><span>Thả quân trong sân nhà, ra lệnh tấn công, phòng thủ hoặc chiếm điểm.</span></div><div class="rule-mini"><b>03 · Chiến thắng</b><span>Lâu đài có 5.000 HP. Phá hủy thành đối thủ để thắng.</span></div></div></div></section>
+  </div>
+ </main>
+</section>
+
+<section class="screen hidden" id="waitingScreen"><div class="waiting-shell"><section class="panel waiting-card"><div class="eyebrow">Phòng chiến trận</div><h1 id="waitingRoomName">Chờ đối thủ…</h1><p class="muted small">Mời một người chơi vào đúng phòng này để bắt đầu giao tranh.</p><div class="versus-row"><div class="player-slot"><div class="slot-icon">♔</div><div class="slot-name" id="waitingPlayer0">Bạn</div><div class="eyebrow" style="margin-top:8px">Chủ phòng</div></div><div class="versus">VS</div><div class="player-slot"><div class="slot-icon" style="color:#a1aaa0">♙</div><div class="slot-name" id="waitingPlayer1" style="color:#9ba99d">Đang chờ…</div><div class="eyebrow" style="margin-top:8px;color:#8d9c8e"><span class="pulse"></span>Tìm đối thủ</div></div></div><p class="wait-note">Phòng này chỉ ở trong bộ nhớ máy chủ. Đừng đóng trang nếu bạn muốn tiếp tục chờ trận.</p><button class="danger" id="leaveWaitingBtn">← Rời phòng</button></section></div></section>
+
+<section class="screen battle-screen hidden" id="battleScreen">
+ <header class="battle-top"><div class="battle-brand"><div class="crest">✦</div><div><div class="brand-name">EMPEROR'S BATTLE</div><div class="brand-sub">1V1 · REAL-TIME</div></div></div><div class="match-mark">Đại chiến đồng cỏ</div>
+  <div class="scorebars"><div class="score-side player"><i class="team-dot" id="myTeamDot"></i><div class="side-name" id="myName">Bạn</div><div class="hpbar"><div class="hpfill" id="myHpFill"></div></div><div class="score-num" id="myHpText">5000</div></div><div class="match-vs">VS</div><div class="score-side enemy"><i class="team-dot" id="enemyTeamDot"></i><div class="side-name" id="enemyName">Đối thủ</div><div class="hpbar"><div class="hpfill" id="enemyHpFill"></div></div><div class="score-num" id="enemyHpText">5000</div></div></div><div class="battle-time" id="battleTime">00:00</div><button class="ghost exit-button" id="leaveBattleBtn">Rời trận</button>
+ </header>
+ <div class="battle-layout"><div class="world-area" id="worldArea"><div class="map-label">◈ Đồng cỏ biên cương · Góc nhìn chiến thuật</div><div class="world-corner" id="mapCorner">SÂN CỦA BẠN ◀</div><div class="camera-hud"><span class="camera-hud-label" id="cameraViewLabel">GÓC NHÌN ĐIỆN ẢNH · SÂN NHÀ</span><button type="button" id="cameraAutoBtn" class="active">CAM TỰ ĐỘNG: BẬT</button></div><div class="world-vignette"></div><div class="map-hint" id="mapHint">Chọn một đơn vị bên phải, sau đó bấm lên phần sân của bạn để triển khai.</div>
+  <div class="result-overlay hidden" id="resultOverlay"><div class="result-card"><div class="eyebrow">Chiến trận khép lại</div><h2 id="resultTitle">Chiến thắng!</h2><p id="resultCopy">Lâu đài đối phương đã sụp đổ.</p><div class="result-actions"><button class="primary" id="backLobbyBtn">Về đại sảnh</button><button class="ghost" id="stayResultBtn">Xem chiến trường</button></div></div></div>
+ </div>
+ <aside class="side-panel">
+  <section class="side-section economy-section"><div class="side-title"><span>Ngân khố</span><span id="mineCount" class="mine-count">Mỏ 0/5</span></div><div class="economy-line"><div class="gold-count" id="goldCount">25</div><div style="text-align:right"><div class="gold-per-sec" id="incomeCount">+0 vàng/s</div><div class="gold-per-sec">♜ Thu nhập mỏ</div></div></div></section>
+  <section class="side-section units-section"><div class="side-title"><span>Triệu tập quân</span><span>LV <b id="levelLabel">1</b></span></div><div class="unit-grid" id="unitGrid"></div><div style="margin-top:11px"><div class="side-title" style="margin-bottom:7px"><span>Cấp quân triển khai</span><span>Tối đa 5</span></div><div class="level-row" id="levelRow"></div></div><div class="help-text">Cấp cao tăng HP và sức mạnh. Đơn vị cấp cao tốn thêm vàng khi triển khai.</div></section>
+  <section class="side-section commands-section"><div class="side-title"><span>Mệnh lệnh</span><span id="selectedCount">Chưa chọn quân</span></div><div class="command-grid"><button class="command-button" data-command="attack"><span>⚔</span>Tấn công</button><button class="command-button" data-command="defend"><span>🛡</span>Rút quân / phòng thủ</button><button class="command-button wide" data-command="occupy"><span>⚑</span>Chiếm đóng điểm</button></div><div class="selection-note" id="selectionNote">Bấm vào quân phe mình trên bản đồ để chọn.</div><button class="upgrade-button" id="upgradeBtn">⬆　Nâng cấp quân / công trình</button></section>
+  <section class="side-section potion-section"><div class="side-title"><span>Roll buff lotion</span><span>5 loại · tỉ lệ đều</span></div><button class="potion-button" id="potionBtn"><span style="display:flex;align-items:center;gap:9px"><span class="potion-icon">⚗</span><span><b>Roll lotion</b><br><span style="font-size:8px;color:#b5a8c8">Hiệu lực 10 giây</span></span></span><span class="cooldown" id="potionCooldown">Sẵn sàng sau 15s</span></button><div class="effect-list" style="margin-top:7px">✦ <b>Điên cuồng</b> · <b>Nhanh nhẹn</b> · <b>Tốc đánh</b> · <b>Hồi máu 25%</b> · <b>Độc dược</b></div></section>
+ </aside></div>
+ <footer class="battle-bottom"><div class="bottom-left"><span class="team-badge"><i class="team-swatch" id="myColorSwatch"></i><span id="myColorName">Phe của bạn</span></span><span>·</span><span id="unitCountFoot">0 quân</span></div><div class="bottom-right"><span>Đồng cỏ cố định · Không cuộn bản đồ</span><span style="color:#d4bd7a">⚔</span></div></footer>
+</section>
+<script type="module">
+import * as THREE from 'three';
+
+const $ = id => document.getElementById(id);
+const screens = ['nameScreen','lobbyScreen','waitingScreen','battleScreen'];
+const showScreen = id => { screens.forEach(s => $(s).classList.toggle('hidden', s !== id)); };
+let ws = null, reconnectTimer = null, currentRoom = null, mySeat = null, game = null, roomRows = [], username = '', lostRoomOnReconnect = false;
+let selectedLevel = 1, selectedCard = null, selectedUnits = new Set(), pendingCommand = null, potionNotice = '';
+let savedRoomName = null, savedRoomPassword = null;
+let toastTimer = null;
+function toast(text){ $('toast').textContent = text; $('toast').classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2500); }
+function send(payload){ if(ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(payload)); else toast('Mất kết nối máy chủ. Đang thử kết nối lại…'); }
+function setConnected(ok){ $('connectionDot').classList.toggle('online',ok); $('connectionText').textContent=ok?'Đã kết nối':'Đang kết nối lại'; }
+function connect(){
+  const protocol=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(`${protocol}//${location.host}/ws`);
+  ws.onopen=()=>{setConnected(true); if(lostRoomOnReconnect){currentRoom=null;mySeat=null;game=null;showScreen('lobbyScreen');lostRoomOnReconnect=false;toast('Kết nối bị gián đoạn; phòng cũ không thể khôi phục. Hãy tạo hoặc vào phòng mới.');} if(username) send({type:'set_name',name:username}); send({type:'list_rooms'});};
+  ws.onclose=()=>{setConnected(false); if(currentRoom)lostRoomOnReconnect=true; if(reconnectTimer)clearTimeout(reconnectTimer); reconnectTimer=setTimeout(connect,1600);};
+  ws.onerror=()=>setConnected(false);
+  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return} handleMessage(m)};
+}
+function handleMessage(m){
+  switch(m.type){
+    case 'connected': break;
+    case 'name_saved': username=m.name; sessionStorage.setItem('egb_guest_name',username); $('guestChip').textContent='♙ '+username; $('nameError').textContent=''; showScreen('lobbyScreen'); send({type:'list_rooms'}); break;
+    case 'rooms': roomRows=m.rooms||[]; renderRooms(); break;
+    case 'room_name_taken': $('createError').textContent='Tên phòng bị trùng, đặt tên khác.'; break;
+    case 'error': toast(m.message||'Có lỗi xảy ra.'); if($('waitingScreen').classList.contains('hidden')===false && !currentRoom) $('createError').textContent=m.message||''; break;
+    case 'joined':
+      currentRoom={id:m.roomId,name:m.roomName}; mySeat=m.seat; $('waitingRoomName').textContent=m.roomName; updateWaitingPlayers(m.players||[username,null]);
+      selectedUnits.clear(); selectedCard=null; pendingCommand=null;
+      if(m.waiting){showScreen('waitingScreen');} else {showScreen('battleScreen'); resetCinematicCamera(); if(m.game) updateGame(m.game);}
+      break;
+    case 'room_status': if(currentRoom){$('waitingRoomName').textContent=m.roomName||currentRoom.name;updateWaitingPlayers(m.players||[]);} break;
+    case 'match_found': showScreen('battleScreen'); resetCinematicCamera(); toast('Đối thủ đã vào trận. Triệu tập quân!'); break;
+    case 'game_update': if(m.game){game=m.game; if(currentRoom && !m.game.winner) { /* active battle */ } renderGameState(m.game); } break;
+    case 'potion_rolled': showPotion(m.owner,m.potion); break;
+    case 'opponent_left': if(game && game.winner!==null){toast('Đối thủ đã rời trận. Bạn thắng!');} break;
+    case 'room_closed': currentRoom=null; mySeat=null; game=null; if(renderer){disposeBattleObjects();} showScreen('lobbyScreen'); toast(m.message||'Phòng đã đóng.'); send({type:'list_rooms'}); break;
+    case 'left_room': currentRoom=null; mySeat=null; game=null; if(renderer){disposeBattleObjects();} showScreen('lobbyScreen'); send({type:'list_rooms'}); break;
+  }
+}
+function updateWaitingPlayers(players){$('waitingPlayer0').textContent=players[0]||'Chờ người chơi…';$('waitingPlayer1').textContent=players[1]||'Đang chờ…';}
+
+$('saveNameBtn').addEventListener('click',()=>{const value=$('guestName').value.trim();if(value.length<2){$('nameError').textContent='Tên chiến binh cần ít nhất 2 ký tự.';return;} username=value.slice(0,20);send({type:'set_name',name:username});});
+$('guestName').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveNameBtn').click()});
+$('refreshRooms').onclick=()=>send({type:'list_rooms'});
+$('roomSearch').addEventListener('input',renderRooms);
+$('saveRoomNameBtn').onclick=()=>{const value=$('roomName').value.trim();if(value.length<2){$('createError').textContent='Tên phòng phải có ít nhất 2 ký tự.';return;}savedRoomName=value;$('createError').textContent='';toast('Đã lưu tên phòng: '+value);};
+$('saveRoomPasswordBtn').onclick=()=>{savedRoomPassword=$('roomPassword').value;toast(savedRoomPassword?'Đã lưu mật khẩu phòng.':'Đã lưu chế độ không mật khẩu.');};
+$('roomName').addEventListener('input',()=>{if(savedRoomName!==$('roomName').value.trim())savedRoomName=null;});
+$('roomPassword').addEventListener('input',()=>{savedRoomPassword=null;});
+$('createRoomBtn').onclick=()=>{const roomName=$('roomName').value.trim();if(roomName.length<2){$('createError').textContent='Tên phòng phải có ít nhất 2 ký tự.';return;}if(savedRoomName!==roomName){$('createError').textContent='Hãy bấm “Lưu tên” trước khi tạo phòng.';return;}if(savedRoomPassword===null){$('createError').textContent='Hãy bấm “Lưu mật khẩu” (có thể để trống) trước khi tạo phòng.';return;} $('createError').textContent='';send({type:'create_room',roomName:savedRoomName,password:savedRoomPassword});};
+$('roomName').addEventListener('keydown',e=>{if(e.key==='Enter')$('saveRoomNameBtn').click()});
+function renderRooms(){
+  const host=$('roomList');host.innerHTML='';const query=$('roomSearch').value.trim().toLocaleLowerCase('vi');const rooms=roomRows.filter(r=>r.name.toLocaleLowerCase('vi').includes(query));
+  if(!rooms.length){host.innerHTML=`<div class="empty-state"><div class="empty-emblem">${query?'⌕':'⚔'}</div>${query?'Không tìm thấy phòng phù hợp.':'Chưa có phòng nào. Hãy tạo phòng và đợi đối thủ đầu tiên.'}</div>`;return;}
+  rooms.forEach(r=>{const row=document.createElement('div');row.className='room-row';const name=document.createElement('div');const title=document.createElement('div');title.className='room-name';title.textContent=(r.locked?'🔒　':'♜　')+r.name;const meta=document.createElement('div');meta.className='room-meta';meta.textContent=r.players===1?'Đang chờ đối thủ':'Đang giao chiến';name.append(title,meta);const count=document.createElement('div');count.className='room-count';count.textContent=`${r.players}/2`;const action=document.createElement('button');action.className='primary';action.textContent=r.players>=2?'Đầy':'Vào phòng';action.disabled=r.players>=2;action.onclick=()=>{const pass=r.locked?prompt(`Nhập mật khẩu phòng “${r.name}”:`):'';if(r.locked&&pass===null)return;send({type:'join_room',roomId:r.id,password:pass||''});};row.append(name,count,action);host.append(row);});
+}
+$('leaveWaitingBtn').onclick=()=>send({type:'leave_room'});
+$('leaveBattleBtn').onclick=()=>{if(confirm('Rời trận sẽ khiến trận đấu kết thúc. Bạn chắc chắn chứ?'))send({type:'leave_room'});};
+$('backLobbyBtn').onclick=()=>send({type:'leave_room'});
+$('stayResultBtn').onclick=()=>$('resultOverlay').classList.add('hidden');
+
+const UNIT_TYPES=[
+ {id:'gold_mine',name:'Mỏ vàng',emoji:'⛏',cost:0,desc:'1 vàng/s · tối đa 5',stats:'HP 300 · Kinh tế'},
+ {id:'vanguard',name:'Lính tiên phong',emoji:'⚔',cost:5,desc:'Cận chiến cân bằng',stats:'HP 60 · ATK 4'},
+ {id:'archer',name:'Cung thủ',emoji:'➶',cost:7,desc:'Tầm xa linh hoạt',stats:'HP 36 · ATK 8'},
+ {id:'shield',name:'Lính khiên',emoji:'🛡',cost:7,desc:'Đỡ đòn tuyến đầu',stats:'HP 112 · DEF 12'},
+ {id:'mage',name:'Pháp sư lửa',emoji:'♨',cost:11,desc:'Lửa AOE + thiêu đốt',stats:'HP 44 · ATK 7'},
+ {id:'cavalry',name:'Kỵ binh',emoji:'♞',cost:10,desc:'Xung phong xuyên tuyến',stats:'HP 75 · ATK 8'},
+ {id:'elephant_lancer',name:'Voi cầm giáo',emoji:'♟',cost:12,desc:'Giáo dài · rất cơ động',stats:'HP 125 · ATK 9'},
+ {id:'catapult',name:'Máy bắn đá',emoji:'⚒',cost:14,desc:'Pháo kích diện rộng',stats:'HP 92 · ATK 15'},
+ {id:'general',name:'Đại tướng quân',emoji:'♛',cost:15,desc:'Đứng yên · gọi lính hoàng gia',stats:'HP 260 · Triệu hồi'}
+];
+function buildArmyUI(){
+  const grid=$('unitGrid');grid.innerHTML='';UNIT_TYPES.forEach((u,i)=>{const b=document.createElement('button');b.className='unit-card'+(i===0?' active':'');b.dataset.kind=u.id;b.innerHTML=`<span class="unit-emoji">${u.emoji}</span><span class="unit-title">${u.name}</span><div class="unit-cost">${u.cost===0?'MIỄN PHÍ':`◈ ${u.cost} vàng`}</div><div class="unit-stat-mini">${u.stats}</div>`;b.title=u.desc;b.onclick=()=>{selectedCard=u.id;pendingCommand=null;if(u.id==='gold_mine'){selectedLevel=1;$('levelLabel').textContent='1';document.querySelectorAll('.level-button').forEach(x=>x.classList.toggle('active',x.textContent==='Cấp 1'));updateCosts();}$('upgradeBtn').disabled=selectedUnits.size===0;document.querySelectorAll('.unit-card').forEach(x=>x.classList.toggle('active',x===b));$('mapHint').textContent=`Đang chọn: ${u.name}. Bấm lên nửa sân của bạn để triển khai.`;toast(`Đã chọn ${u.name}`);};grid.append(b);});
+  const lv=$('levelRow');lv.innerHTML='';for(let i=1;i<=5;i++){const b=document.createElement('button');b.className='level-button'+(i===1?' active':'');b.textContent='Cấp '+i;b.onclick=()=>{selectedLevel=i;$('levelLabel').textContent=i;document.querySelectorAll('.level-button').forEach(x=>x.classList.toggle('active',x===b));updateCosts();};lv.append(b);}
+}
+buildArmyUI();
+function updateCosts(){document.querySelectorAll('.unit-card').forEach(el=>{const u=UNIT_TYPES.find(x=>x.id===el.dataset.kind);const cost=Math.ceil(u.cost*(1+(selectedLevel-1)*.22));el.querySelector('.unit-cost').textContent=u.cost===0?'MIỄN PHÍ':`◈ ${cost} vàng`;});}
+
+const world={width:120,height:80};let renderer=null,scene=null,camera=null,raycaster=null,groundPlane=null,animationId=null,unitObjects=new Map(),castleObjects=[],decorationGroup=null,sceneReady=false;
+const cameraRig={target:new THREE.Vector3(0,.8,0),desiredTarget:new THREE.Vector3(0,.8,0),theta:0.10,desiredTheta:0.10,phi:.84,desiredPhi:.84,radius:94,desiredRadius:94,timer:0,focusEnemy:false,auto:true};
+const toonMaterialCache=new Map();const mat=(color,roughness=.88,metalness=0)=>{const key=String(color);if(!toonMaterialCache.has(key))toonMaterialCache.set(key,new THREE.MeshToonMaterial({color}));return toonMaterialCache.get(key);};
+const materials={grass:mat('#83a95b'),grass2:mat('#9cbd70'),darkGrass:mat('#577a45'),sand:mat('#d3bc87'),water:mat('#7bb9c3'),stone:mat('#b2aa92'),stoneDark:mat('#777968'),wood:mat('#79543a'),gold:mat('#efc85f'),white:mat('#f0e8d5'),black:mat('#26302a'),red:mat('#d94f52'),blue:mat('#3c8de0'),steel:mat('#a7b5b2'),brown:mat('#71513a'),skin:mat('#d7ae88'),flame:mat('#ff8a37'),shadow:mat('#203c24')};
+function mkMesh(geo,material,x=0,y=0,z=0){const m=new THREE.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;}
+function box(parent,w,h,d,material,x,y,z){const m=mkMesh(new THREE.BoxGeometry(w,h,d),material,x,y,z);parent.add(m);return m;}
+function sphere(parent,rx,ry,rz,material,x,y,z){const m=mkMesh(new THREE.SphereGeometry(1,10,8),material,x,y,z);m.scale.set(rx,ry,rz);parent.add(m);return m;}
+function cylinder(parent,rTop,rBottom,h,material,x,y,z,segments=8){const m=mkMesh(new THREE.CylinderGeometry(rTop,rBottom,h,segments),material,x,y,z);parent.add(m);return m;}
+function cone(parent,r,h,material,x,y,z,segments=8){const m=mkMesh(new THREE.ConeGeometry(r,h,segments),material,x,y,z);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;}
+function lineBetween(parent,a,b,r,material,segments=6){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),delta=B.clone().sub(A);const m=mkMesh(new THREE.CylinderGeometry(r,r,delta.length(),segments),material);m.position.copy(A.add(B).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());parent.add(m);return m;}
+function teamMaterial(owner){const p=game?.players?.[owner];return p?.color==='red'?materials.red:materials.blue;}
+function teamHex(owner){return game?.players?.[owner]?.color==='red'?'#d94f52':'#3c8de0';}
+function createHuman(parent,owner,{shield=false,archer=false,mage=false,royal=false,general=false,lancer=false}={}){
+  const human=new THREE.Group();parent.add(human);
+  const uniform=teamMaterial(owner), accent=teamMaterial(owner);
+  const leather=materials.wood, darkLeather=materials.brown, metal=materials.steel, skin=materials.skin;
+  const trim=materials.gold;
+  // Softly tapered tunic and layered breastplate give each soldier a readable human silhouette.
+  sphere(human,.205,.13,.17,darkLeather,0,.82,0);
+  const torsoGeo=new THREE.LatheGeometry([
+    new THREE.Vector2(0,0),new THREE.Vector2(.205,0),new THREE.Vector2(.255,.13),
+    new THREE.Vector2(.23,.36),new THREE.Vector2(.285,.51),new THREE.Vector2(.20,.58),new THREE.Vector2(0,.58)
+  ],10);
+  const torso=mkMesh(torsoGeo,uniform,0,.83,0);human.add(torso);
+  // Quilted skirt flaps, belt, buckle and a short heraldic cape.
+  box(human,.40,.18,.30,uniform,0,.83,-.015);
+  box(human,.43,.075,.32,darkLeather,0,.91,.01);
+  box(human,.095,.09,.035,trim,0,.91,.185);
+  const cape=mkMesh(new THREE.ConeGeometry(.255,.46,5),uniform,0,.87,-.205);cape.rotation.x=Math.PI;cape.rotation.z=.05;cape.scale.z=.30;human.add(cape);
+  for(const x of [-.15,-.05,.05,.15])box(human,.025,.12,.018,trim,x,.74,.166);
+  // Neck, face, ears, eyes, brows and nose: visible at the reference game's medium-close camera angle.
+  cylinder(human,.085,.09,.12,skin,0,1.42,0,8);
+  sphere(human,.155,.18,.145,skin,0,1.57,.015);
+  sphere(human,.026,.031,.016,materials.white,-.052,1.595,.144);sphere(human,.026,.031,.016,materials.white,.052,1.595,.144);
+  sphere(human,.012,.016,.01,materials.black,-.052,1.592,.158);sphere(human,.012,.016,.01,materials.black,.052,1.592,.158);
+  box(human,.055,.012,.014,darkLeather,-.052,1.632,.15);box(human,.055,.012,.014,darkLeather,.052,1.632,.15);
+  sphere(human,.025,.034,.026,skin,0,1.55,.158);box(human,.055,.012,.014,darkLeather,0,1.505,.154);
+  sphere(human,.036,.065,.035,skin,-.158,1.57,0);sphere(human,.036,.065,.035,skin,.158,1.57,0);
+  // Medieval helmet, brow band, crest and side cheek guards.
+  cylinder(human,.174,.185,.065,metal,0,1.705,0,10);
+  sphere(human,.16,.105,.15,uniform,0,1.765,-.005);
+  cone(human,.12,.20,uniform,0,1.84,-.005,6);
+  box(human,.29,.035,.045,trim,0,1.704,.132);
+  box(human,.065,.12,.035,metal,0,1.625,.145);
+  box(human,.045,.12,.055,metal,-.145,1.58,.015);box(human,.045,.12,.055,metal,.145,1.58,.015);
+  if(royal||general){box(human,.31,.055,.22,trim,0,1.71,0);for(let i=-1;i<=1;i++)cone(human,.025,.12,trim,i*.10,1.79,0,4);}
+  // Shoulder plates and hinged arm groups; swings are driven by the animation loop.
+  const arms=[],legs=[];
+  for(const sign of [-1,1]){
+    sphere(human,.115,.12,.13,metal,sign*.265,1.31,.01);
+    sphere(human,.09,.075,.09,uniform,sign*.265,1.34,.04);
+    const arm=new THREE.Group();arm.position.set(sign*.265,1.31,.02);human.add(arm);
+    lineBetween(arm,[0,0,0],[sign*.035,-.20,.035],.075,uniform,8);
+    sphere(arm,.073,.073,.07,metal,sign*.035,-.20,.035);
+    lineBetween(arm,[sign*.035,-.20,.035],[sign*.07,-.39,.10],.056,metal,8);
+    sphere(arm,.06,.055,.06,skin,sign*.07,-.405,.115);
+    arms.push(arm);
+    const leg=new THREE.Group();leg.position.set(sign*.125,.76,0);human.add(leg);
+    lineBetween(leg,[0,0,0],[sign*.02,-.25,.015],.085,darkLeather,8);
+    sphere(leg,.085,.075,.075,metal,sign*.02,-.25,.018);
+    lineBetween(leg,[sign*.02,-.25,.018],[sign*.035,-.49,.045],.068,darkLeather,8);
+    box(leg,.15,.09,.22,darkLeather,sign*.035,-.49,.085);
+    box(leg,.10,.045,.12,metal,sign*.035,-.42,.09);
+    legs.push(leg);
+  }
+  // Unit-specific silhouettes: shield, bow, fire staff, lance or sword.
+  let weapon=null;
+  if(shield){
+    const disk=cylinder(human,.19,.18,.055,metal,-.405,.98,.13,10);disk.rotation.x=Math.PI/2;
+    const face=cylinder(human,.145,.145,.061,accent,-.405,.98,.171,8);face.rotation.x=Math.PI/2;
+    const boss=sphere(human,.055,.055,.025,trim,-.405,.98,.211);
+    box(human,.025,.25,.035,trim,-.405,.98,.212);box(human,.22,.025,.035,trim,-.405,.98,.212);
+  }else if(archer){
+    const bow=mkMesh(new THREE.TorusGeometry(.17,.018,6,14,Math.PI),leather,.37,1.13,.11);bow.rotation.y=Math.PI/2;human.add(bow);
+    lineBetween(human,[.37,.965,.115],[.37,1.30,.115],.006,materials.white,5);
+    lineBetween(human,[.27,1.03,.12],[.47,1.22,.12],.012,metal,6);
+    lineBetween(human,[.38,1.17,.12],[.38,1.40,.12],.012,metal,6);
+  }else if(mage){
+    const robe=cone(human,.265,.52,uniform,0,.92,0,8);robe.rotation.z=Math.PI;
+    lineBetween(human,[.38,.57,.08],[.42,1.50,.08],.035,leather,8);
+    sphere(human,.085,.085,.085,materials.flame,.42,1.55,.08);
+    sphere(human,.11,.11,.11,mat('#ffd782'),.42,1.55,.08);
+    for(let k=0;k<4;k++){const spark=mkMesh(new THREE.OctahedronGeometry(.035),trim,.42+Math.cos(k*1.57)*.13,1.55+Math.sin(k*1.57)*.13,.08);human.add(spark);}
+  }else if(lancer||general){
+    lineBetween(human,[.36,.80,.08],[.38,1.08,.91],.032,leather,8);
+    lineBetween(human,[.38,1.08,.78],[.38,1.08,1.03],.022,metal,8);
+    const point=cone(human,.06,.20,metal,.38,1.08,1.10,6);point.rotation.x=Math.PI/2;
+    sphere(human,.045,.045,.045,trim,.36,.82,.13);
+  }else{
+    lineBetween(human,[.37,.88,.12],[.42,1.20,.18],.025,leather,7);
+    box(human,.045,.28,.045,metal,.42,1.34,.18);
+    cone(human,.042,.10,metal,.42,1.53,.18,5);
+    box(human,.18,.035,.045,trim,.42,1.21,.18);
+  }
+  // Level marks are intentionally subtle at small battlefield scale.
+  human.userData.rig={arms,legs,cape,weapon};human.userData.isHuman=true;
+  return human;
+}
+function createHorse(parent,owner){
+  const mount=new THREE.Group();parent.add(mount);const coat=mat('#8a5c3d');const mane=mat('#3b2d26');const darkLeather=materials.brown;
+  sphere(mount,.36,.28,.22,coat,0,.49,-.10);sphere(mount,.20,.20,.17,coat,.30,.68,.02);sphere(mount,.11,.095,.10,coat,.43,.66,.08);
+  sphere(mount,.10,.15,.06,mane,.19,.79,-.035);sphere(mount,.11,.07,.06,mane,.37,.79,.00);
+  box(mount,.46,.09,.26,teamMaterial(owner),0,.70,-.10);box(mount,.50,.045,.29,materials.gold,0,.75,-.10);
+  // Bridle and reins.
+  lineBetween(mount,[.33,.70,.10],[.48,.56,.12],.018,darkLeather,5);lineBetween(mount,[.48,.56,.12],[.52,.64,.12],.018,darkLeather,5);
+  const legs=[];for(const [x,z] of [[-.22,-.23],[.20,-.23],[-.22,.07],[.20,.07]]){const leg=new THREE.Group();leg.position.set(x,.38,z);mount.add(leg);lineBetween(leg,[0,0,0],[x>0?.025:-.025,-.29,.01],.06,coat,7);sphere(leg,.065,.055,.06,coat,x>0?.025:-.025,-.29,.01);legs.push(leg);}
+  mount.userData.rig={legs};return mount;
+}
+function createElephant(parent,owner){
+  const mount=new THREE.Group();parent.add(mount);const skin=mat('#888f88');
+  sphere(mount,.48,.39,.38,skin,0,.56,-.06);sphere(mount,.28,.30,.27,skin,.39,.70,.04);
+  sphere(mount,.19,.23,.055,skin,.36,.72,.27);sphere(mount,.17,.22,.05,skin,.48,.70,-.20);
+  lineBetween(mount,[.56,.63,.17],[.58,.32,.28],.09,skin,9);sphere(mount,.075,.075,.08,skin,.58,.32,.29);
+  for(const [x,z] of [[.49,.28],[.37,.23]]){const tusk=cone(mount,.055,.29,materials.white,x,.46,z,7);tusk.rotation.x=Math.PI*.38;tusk.rotation.z=x>.4?.10:-.2;}
+  sphere(mount,.04,.035,.025,materials.black,.49,.75,.285);
+  const legs=[];for(const [x,z] of [[-.32,-.28],[.31,-.28],[-.32,.18],[.31,.18]]){
+    const leg=new THREE.Group();leg.position.set(x,.36,z);mount.add(leg);cylinder(leg,.105,.13,.33,skin,0,-.13,0,8);legs.push(leg);
+  }
+  // Royal howdah and colored cloth make the elephant readable even at small scale.
+  box(mount,.44,.20,.39,teamMaterial(owner),-.02,.91,-.06);box(mount,.48,.07,.42,materials.gold,-.02,1.045,-.06);
+  for(const x of [-.20,.20])box(mount,.04,.19,.05,materials.wood,x,1.16,-.06);
+  mount.userData.rig={legs:mount.children.filter(c=>c.type==='Group')};return mount;
+}
+function createCatapult(parent){const wood=materials.wood;box(parent,.55,.14,.38,wood,0,.22,0);for(const x of [-.2,.2])for(const z of [-.16,.16]){cylinder(parent,.09,.09,.055,materials.stoneDark,x,.16,z,8).rotation.x=Math.PI/2;}lineBetween(parent,[-.08,.3,0],[.18,.83,0],.06,wood);lineBetween(parent,[-.25,.3,-.07],[.25,.3,.07],.045,wood);sphere(parent,.1,.1,.1,materials.stone, .18,.83,0);}
+function createMine(parent){const rock=materials.stone;box(parent,.68,.3,.58,rock,0,.15,0);box(parent,.48,.18,.44,materials.stoneDark,0,.38,0);for(const [x,z] of [[-.16,-.1],[.14,.12]]){const gem=mkMesh(new THREE.OctahedronGeometry(.16),materials.gold,x,.5,z);parent.add(gem);}cone(parent,.42,.4,materials.wood,0,.68,0,4);cylinder(parent,.055,.055,.25,materials.wood,.34,.31,0,6);}
+function createUnitObject(u){
+  const g=new THREE.Group();g.position.set(u.x,0,u.z);g.userData.unitId=u.id;g.userData.owner=u.owner;g.userData.kind=u.kind;
+  const shadow=mkMesh(new THREE.CircleGeometry(u.kind==='elephant_lancer'?1.0:u.kind==='cavalry'||u.kind==='general'?.72:.48,18),new THREE.MeshBasicMaterial({color:'#18281b',transparent:true,opacity:.25,depthWrite:false}),0,.012,0);shadow.rotation.x=-Math.PI/2;g.add(shadow);
+  const rigs=[];let mountRig=null;
+  if(u.kind==='gold_mine')createMine(g);
+  else if(u.kind==='cavalry'||u.kind==='general'){
+    const horse=createHorse(g,u.owner);mountRig=horse.userData.rig;
+    const rider=new THREE.Group();rider.position.set(0,.64,-.06);g.add(rider);
+    const h=createHuman(rider,u.owner,{general:u.kind==='general',royal:u.kind==='general',lancer:true});rigs.push(h.userData.rig);
+  }else if(u.kind==='elephant_lancer'){
+    const elephant=createElephant(g,u.owner);mountRig=elephant.userData.rig;
+    const rider=new THREE.Group();rider.position.set(-.03,1.0,-.12);g.add(rider);
+    const h=createHuman(rider,u.owner,{general:true,lancer:true});rigs.push(h.userData.rig);
+    lineBetween(g,[.34,2.00,.02],[.34,2.05,1.28],.035,materials.steel,8);
+  }else if(u.kind==='catapult')createCatapult(g);
+  else {const h=createHuman(g,u.owner,{shield:u.kind==='shield',archer:u.kind==='archer',mage:u.kind==='mage',royal:u.kind==='royal'});rigs.push(h.userData.rig);}
+  const halo=mkMesh(new THREE.RingGeometry(u.kind==='elephant_lancer'?.78:.48,u.kind==='elephant_lancer'?.89:.57,20),new THREE.MeshBasicMaterial({color:'#f4d47a',side:THREE.DoubleSide,transparent:true,opacity:.95,depthWrite:false}),0,.03,0);halo.rotation.x=-Math.PI/2;halo.visible=false;halo.userData.selectionHalo=true;g.add(halo);
+  const hpRoot=new THREE.Group();hpRoot.position.set(0,u.kind==='gold_mine'?.95:u.kind==='elephant_lancer'?2.85:u.kind==='cavalry'||u.kind==='general'?2.55:2.13,0);
+  const hpBack=box(hpRoot,.78,.055,.04,mat('#263029'),0,0,0);const hpFill=box(hpRoot,.74,.032,.045,u.owner===0?mat('#69c47d'):mat('#ed7770'),-.02,.008,.026);hpRoot.userData.hpFill=hpFill;hpRoot.userData.hpMaxWidth=.74;g.add(hpRoot);
+  g.userData.hpRoot=hpRoot;g.userData.rigs=rigs;g.userData.mountRig=mountRig;g.userData.targetX=u.x;g.userData.targetZ=u.z;g.userData.ownerColor=teamHex(u.owner);return g;
+}
+function createCastle(owner){const group=new THREE.Group();group.position.set(owner===0?-48:48,0,0);group.userData.owner=owner;const color=teamMaterial(owner),stone=materials.stone,stoneDark=materials.stoneDark;
+  box(group,8,.45,9,stone,-.2,.22,0);box(group,6,.4,6,stoneDark,0,.53,0);box(group,4.5,1.7,4.5,stone,0,1.3,0);
+  // Four crenellated corner towers with blue/red heraldic roofs.
+  for(const [x,z] of [[-3,-3],[3,-3],[-3,3],[3,3]]){box(group,1.6,2.5,1.6,stone,x,1.45,z);box(group,1.75,.22,1.75,stoneDark,x,2.82,z);cone(group,.94,1.3,color,x,3.55,z,4);box(group,.22,.7,.22,materials.gold,x,4.1,z);}
+  box(group,1.35,1.45,.22,materials.wood,0,1.02,2.28);box(group,.32,.24,.08,materials.gold,0,1.15,2.42);
+  // Low battlements enclose the keep courtyard.
+  box(group,7,.9,.7,stone,-.1,.65,-4.7);box(group,7,.9,.7,stone,-.1,.65,4.7);box(group,.7,.9,8,stone,-4.0,.65,0);box(group,.7,.9,8,stone,3.8,.65,0);
+  for(let x=-3;x<=3;x+=1.5){box(group,.36,.35,.82,stoneDark,x,.99,-4.7);box(group,.36,.35,.82,stoneDark,x,.99,4.7);}
+  const flag=box(group,.08,2.1,.08,materials.wood,0,4.25,-1.6);box(group,.72,.52,.05,color,.36,4.72,-1.6);cone(group,.17,.25,materials.gold,.36,5.1,-1.6,4);
+  scene.add(group);castleObjects.push(group);return group;}
+function createWorld(){
+  if(sceneReady)return;const host=$('worldArea');scene=new THREE.Scene();scene.background=new THREE.Color('#b8cba1');scene.fog=new THREE.Fog('#9db587',105,185);
+  const aspect=host.clientWidth/Math.max(1,host.clientHeight);camera=new THREE.PerspectiveCamera(48,aspect,.1,320);camera.position.set(0,68,70);camera.lookAt(0,.8,0);camera.updateProjectionMatrix();
+  renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.8));renderer.setSize(host.clientWidth,host.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.insertBefore(renderer.domElement,host.firstChild);
+  scene.add(new THREE.HemisphereLight('#eef4d8','#3c573d',2.0));const sun=new THREE.DirectionalLight('#fff0cc',2.25);sun.position.set(-24,65,38);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-75;sun.shadow.camera.right=75;sun.shadow.camera.top=60;sun.shadow.camera.bottom=-60;sun.shadow.bias=-.0006;scene.add(sun);const fill=new THREE.DirectionalLight('#b4d7ff',.5);fill.position.set(35,30,-40);scene.add(fill);
+  const ground=mkMesh(new THREE.PlaneGeometry(180,120,1,1),materials.grass,0,-.18,0);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.name='ground';scene.add(ground);groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);raycaster=new THREE.Raycaster();
+  // Soft grass patches and a strict map perimeter keep the camera within the battlefield.
+  const rng=seededRandom(92641);for(let i=0;i<170;i++){const x=(rng()-.5)*116,z=(rng()-.5)*76;if(Math.abs(x)<4.6||Math.abs(x)>39&&Math.abs(z)<8)continue;const r=.3+rng()*.95;const patch=mkMesh(new THREE.CircleGeometry(r,7),new THREE.MeshBasicMaterial({color:rng()>.5?'#8cae65':'#63864c',transparent:true,opacity:.12,depthWrite:false}),x,-.085,z);patch.rotation.x=-Math.PI/2;patch.castShadow=false;scene.add(patch);}
+  // A shallow river separates two equal halves. Two rustic fords keep troops moving.
+  box(scene,3.2,.12,world.height+28,materials.water,0,-.06,0);box(scene,1.05,.09,world.height+28,materials.sand,-2.05,-.10,0);box(scene,1.05,.09,world.height+28,materials.sand,2.05,-.10,0);
+  for(const z of [-23,23]){box(scene,9,.35,3.2,materials.wood,0,.04,z);for(let x=-4;x<=4;x+=.8)box(scene,.12,.04,3.4,materials.gold,x,.24,z);for(const x of [-4.2,4.2])for(const dz of [-1.25,1.25])cylinder(scene,.08,.1,.7,materials.wood,x,.33,z+dz,6);}
+  // Tiny shrubs, stones and flower clumps create depth without visually enlarging units.
+  decorationGroup=new THREE.Group();for(let i=0;i<210;i++){const x=(rng()-.5)*116,z=(rng()-.5)*76;if(Math.abs(x)<4.8||Math.abs(x)>38&&Math.abs(z)<8)continue;const type=rng();if(type<.33){const bush=sphere(decorationGroup,.18+rng()*.15,.13+rng()*.12,.18+rng()*.15,type<.16?materials.grass2:materials.darkGrass,x,0,z);bush.castShadow=false;}else if(type<.56){const rock=sphere(decorationGroup,.15+rng()*.13,.08+rng()*.07,.12+rng()*.1,materials.stone,x,.02,z);rock.castShadow=false;}else if(type<.74){for(let k=0;k<3;k++){const tuft=cone(decorationGroup,.055,.3+rng()*.2,materials.grass2,x+(rng()-.5)*.2,.13,z+(rng()-.5)*.2,4);tuft.rotation.z=(rng()-.5)*.4;tuft.castShadow=false;}}else{const flower=sphere(decorationGroup,.08,.06,.08,materials.gold,x,.08,z);flower.castShadow=false;}}
+  scene.add(decorationGroup);createCastle(0);createCastle(1);
+  // The visible meadow continues past the playable rectangle; the camera is clamped to the arena rather than a hard visual wall.
+  renderer.domElement.addEventListener('pointerdown',onWorldPointer);window.addEventListener('resize',resizeWorld);sceneReady=true;resetCinematicCamera();animate();
+}
+function seededRandom(seed){let t=seed>>>0;return()=>{t+=0x6D2B79F5;let x=t;x=Math.imul(x^x>>>15,x|1);x^=x+Math.imul(x^x>>>7,x|61);return((x^x>>>14)>>>0)/4294967296;};}
+function resizeWorld(){if(!renderer||!camera)return;const host=$('worldArea'),w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
+function onWorldPointer(e){if(!game||game.winner!==null)return;const rect=renderer.domElement.getBoundingClientRect();const ndc=new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-((e.clientY-rect.top)/rect.height*2-1));raycaster.setFromCamera(ndc,camera);const hits=raycaster.intersectObjects(scene.children,true);let found=null;for(const h of hits){let o=h.object;while(o&&o!==scene){if(o.userData&&o.userData.unitId){found=o;break;}o=o.parent;}if(found)break;}
+  if(found){const id=found.userData.unitId;const unit=game.units.find(u=>u.id===id);if(unit&&unit.owner===mySeat){if(e.shiftKey){selectedUnits.has(id)?selectedUnits.delete(id):selectedUnits.add(id);}else if(selectedUnits.has(id)&&selectedUnits.size===1){selectedUnits.clear();}else{selectedUnits.clear();selectedUnits.add(id);}selectedCard=null;updateSelectionUI();updateUnitHighlights();$('mapHint').textContent='Đã chọn '+selectedUnits.size+' đơn vị. Chọn mệnh lệnh ở bảng bên phải.';return;}}
+  const point=raycaster.ray.intersectPlane(groundPlane,new THREE.Vector3());if(!point)return;const x=point.x,z=point.z;
+  if(pendingCommand==='occupy'){if((mySeat===0&&x>-3.2)||(mySeat===1&&x<3.2)){toast('Điểm chiếm đóng phải nằm trong phần sân của bạn.');return;}if(selectedUnits.size){send({type:'unit_command',command:'occupy',ids:[...selectedUnits],x,z});toast('Đã giao lệnh chiếm đóng.');}pendingCommand=null;document.querySelectorAll('[data-command]').forEach(b=>b.classList.remove('selected'));$('mapHint').textContent='Các quân đã chọn sẽ hành quân tới điểm chiếm đóng.';return;}
+  if(selectedCard){if((mySeat===0&&x>-3.2)||(mySeat===1&&x<3.2)){toast('Không thể triển khai quân sang sân đối phương.');return;}send({type:'place_unit',kind:selectedCard,x,z,level:selectedLevel});return;}
+  selectedUnits.clear();updateSelectionUI();updateUnitHighlights();
+}
+function disposeBattleObjects(){unitObjects.forEach(o=>{scene?.remove(o);disposeObject(o)});unitObjects.clear();selectedUnits.clear();}
+function disposeObject(obj){obj.traverse?.(o=>{if(o.geometry)o.geometry.dispose();});}
+function updateGame(g){game=g;renderGameState(g);}
+function renderGameState(g){
+  if(!g||!g.players)return;game=g;
+  if(!sceneReady){setTimeout(()=>{if(!sceneReady)createWorld();if(game)renderGameState(game);},50);}
+  const me=g.players[mySeat]||g.players[0],enemy=g.players[1-mySeat]||g.players[1];if(!me||!enemy)return;
+  $('myName').textContent=me.name;$('enemyName').textContent=enemy.name;$('myHpText').textContent=Math.ceil(me.castle_hp).toLocaleString('vi-VN');$('enemyHpText').textContent=Math.ceil(enemy.castle_hp).toLocaleString('vi-VN');$('myHpFill').style.width=(me.castle_hp/5000*100)+'%';$('enemyHpFill').style.width=(enemy.castle_hp/5000*100)+'%';$('myTeamDot').style.setProperty('--team',teamHex(mySeat));$('enemyTeamDot').style.setProperty('--team',teamHex(1-mySeat));$('myTeamDot').style.background=teamHex(mySeat);$('enemyTeamDot').style.background=teamHex(1-mySeat);$('myColorSwatch').style.background=teamHex(mySeat);$('myColorName').textContent=me.color==='red'?'Phe Đỏ':'Phe Xanh';$('mapCorner').textContent=me.color==='red'?'SÂN CỦA BẠN · ĐỎ':'SÂN CỦA BẠN · XANH';
+  $('goldCount').textContent=Math.floor(me.gold).toLocaleString('vi-VN');const mines=g.units.filter(u=>u.owner===mySeat&&u.kind==='gold_mine');$('mineCount').textContent=`Mỏ ${mines.length}/5`;const income=mines.reduce((sum,u)=>sum+u.level,0);$('incomeCount').textContent=`+${income} vàng/s`;$('battleTime').textContent=`${String(Math.floor(g.elapsed/60)).padStart(2,'0')}:${String(Math.floor(g.elapsed%60)).padStart(2,'0')}`;$('unitCountFoot').textContent=`${g.units.filter(u=>u.owner===mySeat&&u.kind!=='gold_mine').length} quân`;const cd=Math.max(0,me.potion_ready_at-g.elapsed);$('potionCooldown').textContent=cd>0?`Hồi chiêu ${Math.ceil(cd)}s`:'Sẵn sàng';$('potionBtn').disabled=cd>0||g.winner!==null;
+  if(sceneReady){castleObjects.forEach(castle=>{const owner=castle.userData.owner;castle.traverse(o=>{if(o.isMesh&&(o.material===materials.blue||o.material===materials.red))o.material=teamMaterial(owner);});});syncUnitObjects(g);updateUnitHighlights();}
+  if(g.winner!==null){$('resultOverlay').classList.remove('hidden');const won=g.winner===mySeat;$('resultTitle').textContent=won?'CHIẾN THẮNG':'THẤT THỦ';$('resultTitle').style.color=won?'#f0d48b':'#e68f84';$('resultCopy').textContent=won?'Lâu đài đối phương đã sụp đổ. Chiến địa thuộc về bạn.':'Lâu đài của bạn đã bị phá hủy. Hãy trở lại và phục thù.';$('potionBtn').disabled=true;}
+}
+function syncUnitObjects(g){
+  if(!sceneReady)return;const alive=new Set(g.units.map(u=>u.id));for(const [id,obj] of [...unitObjects])if(!alive.has(id)){scene.remove(obj);disposeObject(obj);unitObjects.delete(id);selectedUnits.delete(id);}
+  for(const u of g.units){let obj=unitObjects.get(u.id);if(!obj){obj=createUnitObject(u);unitObjects.set(u.id,obj);scene.add(obj);}obj.userData.targetX=u.x;obj.userData.targetZ=u.z;obj.userData.unit=u;const hpRoot=obj.userData.hpRoot;if(hpRoot&&hpRoot.userData.hpFill){const ratio=Math.max(0,u.hp/u.max_hp);hpRoot.userData.hpFill.scale.x=ratio;hpRoot.userData.hpFill.position.x=-(1-ratio)*hpRoot.userData.hpMaxWidth/2;hpRoot.userData.hpFill.material.color.set(u.hp/u.max_hp<.3?'#e45d50':u.owner===0?'#71c77d':'#ed7770');}obj.visible=true;}
+  updateUnitHighlights();
+}
+function updateUnitHighlights(){unitObjects.forEach((obj,id)=>{const halo=obj.children.find(c=>c.userData.selectionHalo);if(halo)halo.visible=selectedUnits.has(id);});}
+function updateSelectionUI(){const ids=[...selectedUnits];$('selectedCount').textContent=ids.length?`${ids.length} đã chọn`:'Chưa chọn quân';const units=ids.map(id=>game?.units.find(u=>u.id===id)).filter(Boolean);$('selectionNote').textContent=units.length?`Đã chọn ${units.length} đơn vị · Cấp ${Math.max(...units.map(u=>u.level))}`:'Bấm vào quân phe mình trên bản đồ để chọn.';$('upgradeBtn').disabled=!units.length;}
+function cameraFocusX(enemySide){const mine=mySeat===1?1:-1;return (enemySide?-mine:mine)*29;}
+function cameraBadge(){
+  const label=$('cameraViewLabel'),btn=$('cameraAutoBtn');if(!label||!btn)return;
+  label.textContent=cameraRig.focusEnemy?'GÓC NHÌN ĐIỆN ẢNH · PHÍA ĐỊCH':'GÓC NHÌN ĐIỆN ẢNH · SÂN NHÀ';
+  btn.textContent='CAM TỰ ĐỘNG: '+(cameraRig.auto?'BẬT':'TẮT');btn.classList.toggle('active',cameraRig.auto);
+}
+function resetCinematicCamera(){
+  const homeX=cameraFocusX(false);cameraRig.focusEnemy=false;cameraRig.timer=0;
+  cameraRig.target.set(homeX,.8,0);cameraRig.desiredTarget.set(homeX,.8,0);
+  cameraRig.theta=mySeat===1?-.15:.15;cameraRig.desiredTheta=cameraRig.theta;
+  cameraRig.phi=.84;cameraRig.desiredPhi=.84;cameraRig.radius=94;cameraRig.desiredRadius=94;
+  if(camera){const p=camera.position;p.set(homeX+cameraRig.radius*Math.sin(cameraRig.phi)*Math.sin(cameraRig.theta),.8+cameraRig.radius*Math.cos(cameraRig.phi),cameraRig.radius*Math.sin(cameraRig.phi)*Math.cos(cameraRig.theta));camera.lookAt(homeX,.8,0);}
+  cameraBadge();
+}
+function updateCameraStep(dt){
+  if(!camera)return;
+  if(cameraRig.auto&&game&&game.winner===null){
+    cameraRig.timer+=dt;
+    if(cameraRig.timer>=10.5){cameraRig.timer=0;cameraRig.focusEnemy=!cameraRig.focusEnemy;cameraRig.desiredTarget.x=cameraFocusX(cameraRig.focusEnemy);cameraRig.desiredTheta=cameraRig.focusEnemy?(mySeat===1?.17:-.17):(mySeat===1?-.15:.15);cameraRig.desiredRadius=cameraRig.focusEnemy?88:94;cameraBadge();}
+  }
+  const ease=Math.min(1,dt*1.35),turnEase=Math.min(1,dt*.95);
+  cameraRig.target.lerp(cameraRig.desiredTarget,ease);
+  cameraRig.theta+=(cameraRig.desiredTheta-cameraRig.theta)*turnEase;
+  cameraRig.phi+=(cameraRig.desiredPhi-cameraRig.phi)*turnEase;
+  cameraRig.radius+=(cameraRig.desiredRadius-cameraRig.radius)*turnEase;
+  const sinP=Math.sin(cameraRig.phi),cosP=Math.cos(cameraRig.phi),sinT=Math.sin(cameraRig.theta),cosT=Math.cos(cameraRig.theta);
+  const cx=cameraRig.target.x+cameraRig.radius*sinP*sinT;
+  const cy=Math.max(5,cameraRig.target.y+cameraRig.radius*cosP);
+  const cz=cameraRig.target.z+cameraRig.radius*sinP*cosT;
+  camera.position.set(cx,cy,cz);camera.lookAt(cameraRig.target.x,cameraRig.target.y,cameraRig.target.z);
+}
+function animate(){
+  if(!renderer||!scene||!camera)return;animationId=requestAnimationFrame(animate);
+  const now=performance.now(),t=now*.001,dt=Math.min(.05,Math.max(.001,(now-(animate.lastNow||now))*.001));animate.lastNow=now;
+  updateCameraStep(dt);
+  unitObjects.forEach((obj,id)=>{
+    const u=obj.userData.unit;if(!u)return;
+    obj.position.x+=(obj.userData.targetX-obj.position.x)*.19;obj.position.z+=(obj.userData.targetZ-obj.position.z)*.19;
+    const moving=Math.hypot(obj.userData.targetX-obj.position.x,obj.userData.targetZ-obj.position.z)>.06;
+    if(u.kind!=='gold_mine'&&u.kind!=='catapult'){
+      const stride=moving?Math.sin(t*12+Number(id)*.31)*.50:Math.sin(t*2+Number(id)*.31)*.018;
+      obj.position.y=moving?Math.abs(Math.sin(t*12+Number(id)*.31))*.045:0;
+      for(const rig of (obj.userData.rigs||[])){
+        (rig.legs||[]).forEach((leg,i)=>{leg.rotation.x=moving?Math.sin(t*12+Number(id)*.31+i*Math.PI)*.48:0;});
+        (rig.arms||[]).forEach((arm,i)=>{arm.rotation.x=moving?Math.sin(t*12+Number(id)*.31+i*Math.PI+Math.PI)*.33:(i===0?-.04:.04);});
+        if(rig.cape)rig.cape.rotation.z=Math.sin(t*5+Number(id))*.055;
+      }
+      const mount=obj.userData.mountRig;if(mount&&mount.legs)(mount.legs||[]).forEach((leg,i)=>{leg.rotation.x=moving?Math.sin(t*12+Number(id)*.31+i*Math.PI/2)*.46:Math.sin(t*2+i)*.02;});
+    }else obj.position.y=0;
+    if(u.kind!=='gold_mine'){
+      const enemies=game?.units.filter(e=>e.owner!==u.owner&&e.kind!=='gold_mine')||[];
+      if(enemies.length){let near=enemies[0],best=Infinity;for(const e of enemies){const d=(e.x-u.x)**2+(e.z-u.z)**2;if(d<best){best=d;near=e;}}const dx=near.x-u.x,dz=near.z-u.z;obj.rotation.y=Math.atan2(dx,dz);}
+    }
+    if(obj.userData.hpRoot)obj.userData.hpRoot.lookAt(camera.position);
+  });
+  renderer.render(scene,camera);
+}
+
+$('cameraAutoBtn').onclick=()=>{cameraRig.auto=!cameraRig.auto;cameraRig.timer=0;cameraBadge();toast(cameraRig.auto?'Đã bật camera điện ảnh tự động.':'Đã giữ góc camera hiện tại.');};
+$('potionBtn').onclick=()=>send({type:'roll_potion'});
+$('upgradeBtn').onclick=()=>{const id=[...selectedUnits][0];if(!id){toast('Chọn một đơn vị hoặc công trình trước.');return;}send({type:'upgrade_unit',id});};
+document.querySelectorAll('[data-command]').forEach(b=>b.addEventListener('click',()=>{if(!selectedUnits.size){toast('Hãy chọn quân của bạn trên bản đồ trước.');return;}const cmd=b.dataset.command;if(cmd==='occupy'){pendingCommand='occupy';toast('Bấm lên một điểm trong sân nhà để chiếm đóng.');$('mapHint').textContent='Chế độ chiếm đóng: bấm chọn điểm đến trong phần sân của bạn.';document.querySelectorAll('[data-command]').forEach(x=>x.classList.toggle('selected',x===b));}else{send({type:'unit_command',command:cmd,ids:[...selectedUnits]});pendingCommand=null;document.querySelectorAll('[data-command]').forEach(x=>x.classList.toggle('selected',x===b));toast(cmd==='attack'?'Đã ra lệnh tấn công.':'Đã ra lệnh rút quân / phòng thủ.');}}));
+function showPotion(owner,p){const names={frenzy:'Điên cuồng: toàn quân +2 mỗi chỉ số',agility:'Nhanh nhẹn: toàn quân +3 SPEED',haste:'Tốc đánh: toàn quân +3 ATK SPEED',heal:'Hồi máu: hồi 25% HP toàn quân',poison:'Độc dược: đòn đánh gây thêm độc'};const text=names[p]||p;if(owner===mySeat)toast('⚗ '+text);else toast('Đối thủ đã roll potion.');}
+
+// First visit is a guest-only session. The name is kept in sessionStorage, never in a player database.
+connect();const storedName=sessionStorage.getItem('egb_guest_name');if(storedName){username=storedName;$('guestName').value=storedName;$('guestChip').textContent='♙ '+storedName;showScreen('lobbyScreen');}
+</script>
+</body></html>
